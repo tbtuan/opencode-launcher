@@ -337,24 +337,22 @@ body { display: flex; flex-direction: column; }
 }
 
 .dir-card-settings-btn {
-  width: 28px; height: 28px;
+  width: 34px; height: 34px;
   background: transparent;
   border: 1px solid var(--border);
-  border-radius: 50%;
-  color: var(--text-dim); font-size: 14px; cursor: pointer;
+  border-radius: 8px;
+  color: var(--text-dim); font-size: 15px; cursor: pointer;
   display: flex; align-items: center; justify-content: center;
   transition: background 0.12s, color 0.12s, border-color 0.12s;
   flex-shrink: 0;
-  opacity: 0;
 }
-.dir-card:hover .dir-card-settings-btn { opacity: 1; }
 .dir-card-settings-btn:hover { background: var(--card-hover); color: var(--text); border-color: var(--text-dim); }
 
 .dir-card-play-btn {
-  width: 30px; height: 30px;
+  width: 34px; height: 34px;
   background: var(--accent);
-  border: none; border-radius: 50%;
-  color: #fff; font-size: 12px; cursor: pointer;
+  border: none; border-radius: 8px;
+  color: #fff; font-size: 13px; cursor: pointer;
   display: flex; align-items: center; justify-content: center;
   padding-left: 2px;
   transition: background 0.12s, transform 0.1s;
@@ -363,10 +361,10 @@ body { display: flex; flex-direction: column; }
 .dir-card-play-btn:hover { background: var(--accent-hover); transform: scale(1.1); }
 
 .dir-card-stop-btn {
-  width: 30px; height: 30px;
+  width: 34px; height: 34px;
   background: rgba(244, 71, 71, 0.15);
-  border: none; border-radius: 50%;
-  color: #f44747; font-size: 12px; cursor: pointer;
+  border: none; border-radius: 8px;
+  color: #f44747; font-size: 13px; cursor: pointer;
   display: flex; align-items: center; justify-content: center;
   transition: background 0.12s, transform 0.1s;
   flex-shrink: 0;
@@ -374,10 +372,10 @@ body { display: flex; flex-direction: column; }
 .dir-card-stop-btn:hover { background: rgba(244, 71, 71, 0.3); transform: scale(1.1); }
 
 .dir-card-restart-btn {
-  width: 30px; height: 30px;
+  width: 34px; height: 34px;
   background: rgba(220, 220, 170, 0.1);
-  border: none; border-radius: 50%;
-  color: #dcdcaa; font-size: 15px; cursor: pointer;
+  border: none; border-radius: 8px;
+  color: #dcdcaa; font-size: 16px; cursor: pointer;
   display: flex; align-items: center; justify-content: center;
   transition: background 0.12s, transform 0.1s;
   flex-shrink: 0;
@@ -426,12 +424,13 @@ body { display: flex; flex-direction: column; }
   text-transform: none; letter-spacing: 0;
   cursor: pointer;
 }
+.dir-card-editor-footer {
   display: flex; gap: 6px; justify-content: flex-end;
   margin-top: 2px;
 }
 .dir-card-editor-footer button {
-  padding: 5px 14px; border-radius: 5px; border: none;
-  font-size: 12px; cursor: pointer; transition: background 0.12s;
+  padding: 8px 22px; border-radius: 8px; border: none;
+  font-size: 13px; cursor: pointer; transition: background 0.12s;
 }
 .dir-card-editor-save   { background: var(--accent); color: #fff; }
 .dir-card-editor-save:hover { background: var(--accent-hover); }
