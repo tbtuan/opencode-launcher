@@ -172,6 +172,7 @@ document.addEventListener('DOMContentLoaded', () => {
       // xterm fitten nach Sichtbarkeit
       const tab = tabs.find(t => t.id === id)
       if (tab) {
+        tab.lastActivateTime = Date.now()
         requestAnimationFrame(() => {
           try {
             tab.fitAddon.fit()
@@ -537,6 +538,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const preview = previewTerminals.get(id)
       if (preview) {
         try { preview.terminal.write(data) } catch (e) {}
+        markPreviewActive(id)
       }
     })
     const unsubExit = window.api.onPtyExit(id, (code) => {
@@ -941,7 +943,7 @@ document.addEventListener('DOMContentLoaded', () => {
     card.innerHTML = `
       <div class="preview-card-header">
         <span class="preview-card-name">${escapeHtml(tab.name)}</span>
-        <span class="preview-card-status">${i18n.t('preview.running')}</span>
+        <span class="preview-card-status preview-active"><span class="preview-activity-dot"></span> ${i18n.t('preview.processing')}</span>
       </div>
       <div class="preview-card-terminal"></div>
     `
@@ -975,8 +977,24 @@ document.addEventListener('DOMContentLoaded', () => {
     terminal.open(termContainer)
     termContainer.style.height = `${tab.terminal.rows * Math.round(6 * 1.2) + 40}px`
 
-    previewTerminals.set(tab.id, { terminal, container: termContainer, card })
+    previewTerminals.set(tab.id, { terminal, container: termContainer, card, activeDot: card.querySelector('.preview-activity-dot'), activeStatus: card.querySelector('.preview-card-status'), activeTimeout: null, createdAt: Date.now() })
     renderPreviewSection()
+  }
+
+  function markPreviewActive(tabId) {
+    const preview = previewTerminals.get(tabId)
+    if (!preview) return
+    const tab = tabs.find(t => t.id === tabId)
+    if (tab && tab.lastActivateTime && Date.now() - tab.lastActivateTime < 1500) return
+    const elapsed = Date.now() - preview.createdAt
+    const idleTimeout = elapsed < 10000 ? 2500 : 2000
+    preview.activeStatus.classList.add('preview-active')
+    preview.activeStatus.childNodes[1].textContent = ` ${i18n.t('preview.processing')}`
+    clearTimeout(preview.activeTimeout)
+    preview.activeTimeout = setTimeout(() => {
+      preview.activeStatus.classList.remove('preview-active')
+      preview.activeStatus.childNodes[1].textContent = ` ${i18n.t('preview.running')}`
+    }, idleTimeout)
   }
 
   function removePreviewTerminal(tabId) {

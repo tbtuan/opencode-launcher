@@ -516,6 +516,31 @@ body { display: flex; flex-direction: column; }
   color: #4ec9b0;
   flex-shrink: 0;
   white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  transition: color 0.3s;
+}
+.preview-card-status.preview-active {
+  color: #dcdcaa;
+}
+
+.preview-activity-dot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #4ec9b0;
+  transition: background 0.3s;
+}
+.preview-card-status.preview-active .preview-activity-dot {
+  background: #dcdcaa;
+  animation: preview-pulse 1s ease-in-out infinite;
+}
+
+@keyframes preview-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.2; }
 }
 
 .preview-card-terminal {
