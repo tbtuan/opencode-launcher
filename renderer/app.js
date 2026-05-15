@@ -18,7 +18,11 @@ document.addEventListener('DOMContentLoaded', () => {
   let availableModels = []  // { id, name, providerID }
   let modelsTimestamp = null
   let savedTabOrder   = []
+  let defaultTab      = 'home'
   let draggedTabId    = null
+
+  // ── Preview Terminals ──────────────────────────────────────────
+  const previewTerminals = new Map() // tabId -> { terminal, fitAddon, container, card }
 
   // ── DOM-Refs ───────────────────────────────────────────────────────────────
   const tabsContainer = document.getElementById('tabs-container')
@@ -50,6 +54,15 @@ document.addEventListener('DOMContentLoaded', () => {
       const config = await window.api.loadConfig()
       savedDirectories = config.directories || []
       savedTabOrder    = config.tabOrder    || []
+      defaultTab       = config.defaultTab  || 'home'
+
+      // Migration: alte dir.defaultTab in neues Format überführen
+      const oldDefault = savedDirectories.find(d => d.defaultTab)
+      if (oldDefault && !config.defaultTab) {
+        defaultTab = oldDefault.path
+        savedDirectories.forEach(d => delete d.defaultTab)
+      }
+      savedDirectories.forEach(d => delete d.defaultTab)
     } catch (e) {
       console.error('[init]', e)
     }
@@ -64,11 +77,20 @@ document.addEventListener('DOMContentLoaded', () => {
 
     renderCards()
 
-    // Modelle neu laden Button
-    document.getElementById('btn-reload-models').addEventListener('click', async () => {
-      const btn = document.getElementById('btn-reload-models')
+    // Aktionen-Menü
+    document.getElementById('btn-actions').addEventListener('click', (e) => {
+      e.stopPropagation()
+      document.getElementById('actions-dropdown').classList.toggle('hidden')
+    })
+    document.addEventListener('click', () => {
+      document.getElementById('actions-dropdown').classList.add('hidden')
+    })
+
+    document.getElementById('act-reload-models').addEventListener('click', async () => {
+      document.getElementById('actions-dropdown').classList.add('hidden')
+      const btn = document.getElementById('act-reload-models')
       btn.disabled = true
-      btn.textContent = 'Lade...'
+      btn.textContent = '↻ Lade...'
       try {
         const result = await window.api.refreshModels()
         availableModels = result.models || []
@@ -80,21 +102,44 @@ document.addEventListener('DOMContentLoaded', () => {
       renderCards()
     })
 
+    document.getElementById('act-restart-launcher').addEventListener('click', async () => {
+      document.getElementById('actions-dropdown').classList.add('hidden')
+      try {
+        await window.api.restartApp()
+      } catch (e) {}
+    })
+
+    document.getElementById('act-settings').addEventListener('click', () => {
+      document.getElementById('actions-dropdown').classList.add('hidden')
+      showSettingsDialog()
+    })
+
     // Auto-Launch: Verzeichnisse mit startOnLaunch=true sofort öffnen
     const autoLaunch = savedDirectories.filter(d => d.startOnLaunch)
     const tabIds = []
-    if (autoLaunch.length > 0) {
-      for (const dir of autoLaunch) {
-        const id = await createTab(dir.name, dir.path, dir.continueSession ? '--continue' : '')
-        tabIds.push({ id, dir })
-      }
-      // Standard-Tab aktivieren, sonst den letzten geöffneten
-      const defaultEntry = tabIds.find(t => t.dir.defaultTab)
-      activatePane(defaultEntry ? defaultEntry.id : tabIds[tabIds.length - 1].id)
-      applyTabOrder(savedTabOrder)
-    } else {
-      activatePane('home')
+    for (const dir of autoLaunch) {
+      const id = await createTab(dir.name, dir.path, dir.continueSession ? '--continue' : '')
+      tabIds.push({ id, dir })
     }
+
+    // Standard-Tab aktivieren
+    if (defaultTab === 'home' || !defaultTab) {
+      activatePane('home')
+    } else {
+      const tabEntry = tabIds.find(t => t.dir.path === defaultTab)
+      if (tabEntry) {
+        activatePane(tabEntry.id)
+      } else {
+        const dir = savedDirectories.find(d => d.path === defaultTab)
+        if (dir) {
+          const id = await createTab(dir.name, dir.path, dir.continueSession ? '--continue' : '')
+          activatePane(id)
+        } else {
+          activatePane(tabIds.length > 0 ? tabIds[tabIds.length - 1].id : 'home')
+        }
+      }
+    }
+    applyTabOrder(savedTabOrder)
   }
 
   // ── Pane aktivieren ────────────────────────────────────────────────────────
@@ -142,6 +187,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
       card.draggable = true
       card.addEventListener('dragstart', (e) => {
+        if (!document.getElementById('settings-dialog-overlay').classList.contains('hidden') || !card.querySelector('.dir-card-editor').classList.contains('hidden')) { e.preventDefault(); return }
         draggedCardPath = dir.path
         e.dataTransfer.effectAllowed = 'move'
         requestAnimationFrame(() => card.classList.add('dragging'))
@@ -193,7 +239,6 @@ document.addEventListener('DOMContentLoaded', () => {
           <button class="dir-card-play-btn" title="Terminal starten">&#9654;</button>
           <button class="dir-card-stop-btn hidden" title="Stoppen &amp; schließen">&#9632;</button>
           <button class="dir-card-restart-btn hidden" title="Neu starten">&#8635;</button>
-          <button class="dir-card-delete-btn" title="Aus Liste entfernen">&#215;</button>
         </div>
       </div>
       <div class="dir-card-model-section">
@@ -218,10 +263,6 @@ document.addEventListener('DOMContentLoaded', () => {
           <input class="dir-card-editor-continue" type="checkbox" ${dir.continueSession ? 'checked' : ''} />
           <label>Session fortsetzen beim Öffnen</label>
         </div>
-        <div class="dir-card-editor-row dir-card-editor-row--check">
-          <input class="dir-card-editor-default" type="checkbox" ${dir.defaultTab ? 'checked' : ''} />
-          <label>Standard-Tab beim Start</label>
-        </div>
         <div class="dir-card-editor-footer">
           <button class="dir-card-editor-save">Speichern</button>
           <button class="dir-card-editor-cancel">Abbrechen</button>
@@ -235,7 +276,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const descInput     = card.querySelector('.dir-card-editor-desc')
     const launchInput   = card.querySelector('.dir-card-editor-launch')
     const continueInput = card.querySelector('.dir-card-editor-continue')
-    const defaultInput  = card.querySelector('.dir-card-editor-default')
     const modelSelect   = card.querySelector('.dir-card-model-select')
     const providerLabel = card.querySelector('.dir-card-model-provider')
 
@@ -278,17 +318,18 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const openEditor = (e) => {
       e.stopPropagation()
+      card.draggable = false
       nameInput.value = dir.name
       descInput.value = dir.description || ''
       launchInput.checked   = dir.startOnLaunch   || false
       continueInput.checked = dir.continueSession  || false
-      defaultInput.checked  = dir.defaultTab       || false
       viewEl.classList.add('hidden')
       editorEl.classList.remove('hidden')
       nameInput.focus(); nameInput.select()
     }
 
     const closeEditor = () => {
+      card.draggable = true
       editorEl.classList.add('hidden')
       viewEl.classList.remove('hidden')
     }
@@ -300,11 +341,6 @@ document.addEventListener('DOMContentLoaded', () => {
       dir.description    = newDesc
       dir.startOnLaunch  = launchInput.checked
       dir.continueSession = continueInput.checked
-      // Standard-Tab: nur eine Kachel darf defaultTab=true sein
-      if (defaultInput.checked) {
-        savedDirectories.forEach(d => { d.defaultTab = false })
-      }
-      dir.defaultTab = defaultInput.checked
       persistConfig()
       renderCards()
     }
@@ -345,11 +381,9 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     })
 
-    card.querySelector('.dir-card-delete-btn').addEventListener('click', (e) => {
-      e.stopPropagation()
-      savedDirectories = savedDirectories.filter(d => d.path !== dir.path)
-      persistConfig()
-      renderCards()
+    card.addEventListener('contextmenu', (e) => {
+      e.preventDefault()
+      showContextMenu(e.clientX, e.clientY, dir.path, 'card')
     })
 
     card.querySelector('.dir-card-editor-save').addEventListener('click', (e) => {
@@ -483,7 +517,13 @@ document.addEventListener('DOMContentLoaded', () => {
     // Sofort wieder ausblenden – activatePane übernimmt das
     pane.classList.remove('active')
 
-    const unsubData = window.api.onPtyData(id, (data) => terminal.write(data))
+    const unsubData = window.api.onPtyData(id, (data) => {
+      terminal.write(data)
+      const preview = previewTerminals.get(id)
+      if (preview) {
+        try { preview.terminal.write(data) } catch (e) {}
+      }
+    })
     const unsubExit = window.api.onPtyExit(id, (code) => {
       const tab = tabs.find(t => t.id === id)
       if (tab) { tab.status = 'stopped'; renderTabBar() }
@@ -521,7 +561,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
     try {
       const result = await window.api.createPty(id, cwd, args)
-      if (result?.ok) { tabObj.status = 'running'; renderTabBar() }
+      if (result?.ok) {
+        tabObj.status = 'running'
+        renderTabBar()
+        window.api.resizePty(id, tabObj.terminal.cols, tabObj.terminal.rows)
+        setTimeout(() => createPreviewTerminal(tabObj), 100)
+      }
     } catch (e) {
       tabObj.status = 'error'
       terminal.write(`\r\n\x1b[31m[Fehler: ${e.message}]\x1b[0m\r\n`)
@@ -570,7 +615,7 @@ document.addEventListener('DOMContentLoaded', () => {
         activatePane(tab.id)
       })
       el.addEventListener('contextmenu', (e) => {
-        e.preventDefault(); showContextMenu(e.clientX, e.clientY, tab.id)
+        e.preventDefault(); showContextMenu(e.clientX, e.clientY, tab.id, 'tab')
       })
       el.querySelector('.tab-close').addEventListener('click', (e) => {
         e.stopPropagation(); closeTab(tab.id)
@@ -579,6 +624,7 @@ document.addEventListener('DOMContentLoaded', () => {
       // Drag & Drop
       el.draggable = true
       el.addEventListener('dragstart', (e) => {
+        if (!document.getElementById('settings-dialog-overlay').classList.contains('hidden')) { e.preventDefault(); return }
         draggedTabId = tab.id
         e.dataTransfer.effectAllowed = 'move'
         requestAnimationFrame(() => el.classList.add('dragging'))
@@ -627,6 +673,7 @@ document.addEventListener('DOMContentLoaded', () => {
     try { await window.api.killPty(id) } catch (e) {}
     try { tab.terminal.dispose() } catch (e) {}
     document.getElementById(`pane-${id}`)?.remove()
+    removePreviewTerminal(id)
     tabs.splice(idx, 1)
 
     if (activeId === id) {
@@ -641,8 +688,11 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // ── Context Menu ───────────────────────────────────────────────────────────
-  function showContextMenu(x, y, tabId) {
-    contextMenuTabId = tabId
+  function showContextMenu(x, y, targetId, type = 'tab') {
+    contextMenuTabId = targetId
+    contextMenu.querySelectorAll('[data-ctx]').forEach(el => {
+      el.classList.toggle('hidden', el.dataset.ctx !== type)
+    })
     contextMenu.classList.remove('hidden')
     contextMenu.style.left = `${x}px`
     contextMenu.style.top  = `${y}px`
@@ -695,6 +745,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const tab = tabs.find(t => t.id === id)
     if (!tab) return
     tab.terminal.clear()
+    const preview = previewTerminals.get(id)
+    if (preview) { try { preview.terminal.clear() } catch (e) {} }
     try {
       const result = await window.api.createPty(id, tab.cwd)
       if (result?.ok) { tab.status = 'running'; renderTabBar() }
@@ -706,17 +758,80 @@ document.addEventListener('DOMContentLoaded', () => {
     if (id) closeTab(id)
   })
 
+  document.getElementById('ctx-delete-card').addEventListener('click', () => {
+    const path = contextMenuTabId; hideContextMenu()
+    if (!path) return
+    savedDirectories = savedDirectories.filter(d => d.path !== path)
+    persistConfig()
+    renderCards()
+  })
+
   // ── Config ─────────────────────────────────────────────────────────────────
   function persistConfig() {
-    window.api.saveConfig({ directories: savedDirectories })
+    window.api.saveConfig({ directories: savedDirectories, defaultTab })
   }
+
+  // ── Settings Dialog ────────────────────────────────────────────────────────
+  function showSettingsDialog() {
+    const overlay = document.getElementById('settings-dialog-overlay')
+    const options = document.getElementById('settings-dialog-options')
+    options.innerHTML = ''
+
+    const addOption = (value, label, sub) => {
+      const el = document.createElement('label')
+      el.innerHTML = `
+        <input type="radio" name="settings-default-tab" value="${escapeHtml(value)}" ${defaultTab === value ? 'checked' : ''}>
+        <span class="settings-opt-label">${escapeHtml(label)}</span>
+        ${sub ? `<span class="settings-opt-sub">${escapeHtml(sub)}</span>` : ''}
+      `
+      options.appendChild(el)
+    }
+
+    addOption('home', 'Home', 'Dashboard-Ansicht')
+    for (const dir of savedDirectories) {
+      addOption(dir.path, dir.name, dir.path)
+    }
+
+    overlay.classList.remove('hidden')
+    document.querySelectorAll('.dir-card').forEach(c => c.draggable = false)
+  }
+
+  document.getElementById('settings-dialog-save').addEventListener('click', () => {
+    const selected = document.querySelector('input[name="settings-default-tab"]:checked')
+    if (selected) {
+      defaultTab = selected.value
+      persistConfig()
+    }
+    document.getElementById('settings-dialog-overlay').classList.add('hidden')
+    document.querySelectorAll('.dir-card').forEach(c => c.draggable = true)
+  })
+
+  document.getElementById('settings-dialog-cancel').addEventListener('click', () => {
+    document.getElementById('settings-dialog-overlay').classList.add('hidden')
+    document.querySelectorAll('.dir-card').forEach(c => c.draggable = true)
+  })
+
+  document.getElementById('settings-dialog-overlay').addEventListener('click', (e) => {
+    if (e.target === e.currentTarget) {
+      document.getElementById('settings-dialog-overlay').classList.add('hidden')
+      document.querySelectorAll('.dir-card').forEach(c => c.draggable = true)
+    }
+  })
 
   // ── Resize Observer ────────────────────────────────────────────────────────
   new ResizeObserver(() => {
-    if (!activeId || activeId === 'home') return
+    if (activeId === 'home') return
     const tab = tabs.find(t => t.id === activeId)
     if (tab) {
-      try { tab.fitAddon.fit(); window.api.resizePty(activeId, tab.terminal.cols, tab.terminal.rows) } catch (e) {}
+      try {
+        tab.fitAddon.fit()
+        window.api.resizePty(activeId, tab.terminal.cols, tab.terminal.rows)
+        const preview = previewTerminals.get(activeId)
+        if (preview) {
+          preview.terminal.resize(tab.terminal.cols, tab.terminal.rows)
+          preview.container.style.height = `${tab.terminal.rows * Math.round(6 * 1.2) + 40}px`
+        }
+      } catch (e) {}
     }
   }).observe(contentArea)
 
@@ -741,6 +856,70 @@ document.addEventListener('DOMContentLoaded', () => {
     card.querySelector('.dir-card-play-btn').classList.toggle('hidden', running)
     card.querySelector('.dir-card-stop-btn').classList.toggle('hidden', !running)
     card.querySelector('.dir-card-restart-btn').classList.toggle('hidden', !running)
+  }
+
+  // ── Preview Terminals ─────────────────────────────────────────
+  function createPreviewTerminal(tab) {
+    if (previewTerminals.has(tab.id)) return
+
+    const previewGrid = document.getElementById('preview-grid')
+    const card = document.createElement('div')
+    card.className = 'preview-card'
+    card.dataset.tabId = tab.id
+
+    card.innerHTML = `
+      <div class="preview-card-header">
+        <span class="preview-card-name">${escapeHtml(tab.name)}</span>
+        <span class="preview-card-status">● Läuft</span>
+      </div>
+      <div class="preview-card-terminal"></div>
+    `
+
+    card.addEventListener('click', () => activatePane(tab.id))
+
+    previewGrid.appendChild(card)
+
+    const termContainer = card.querySelector('.preview-card-terminal')
+    const terminal = new Terminal({
+      cols: tab.terminal.cols,
+      rows: tab.terminal.rows,
+      theme: {
+        background: '#1e1e1e', foreground: '#cccccc', cursor: '#ffffff',
+        selectionBackground: 'rgba(0,122,204,0.3)',
+        black: '#1e1e1e', red: '#f44747', green: '#4ec9b0', yellow: '#dcdcaa',
+        blue: '#569cd6', magenta: '#c586c0', cyan: '#9cdcfe', white: '#d4d4d4',
+        brightBlack: '#808080', brightRed: '#f44747', brightGreen: '#4ec9b0',
+        brightYellow: '#dcdcaa', brightBlue: '#569cd6', brightMagenta: '#c586c0',
+        brightCyan: '#9cdcfe', brightWhite: '#ffffff',
+      },
+      fontFamily: "'Cascadia Code', 'Fira Code', 'Consolas', monospace",
+      fontSize: 6,
+      lineHeight: 1.2,
+      cursorBlink: false,
+      cursorStyle: 'underline',
+      scrollback: 500,
+      disableStdin: true,
+    })
+
+    terminal.open(termContainer)
+    termContainer.style.height = `${tab.terminal.rows * Math.round(6 * 1.2) + 40}px`
+
+    previewTerminals.set(tab.id, { terminal, container: termContainer, card })
+    renderPreviewSection()
+  }
+
+  function removePreviewTerminal(tabId) {
+    const preview = previewTerminals.get(tabId)
+    if (!preview) return
+    try { preview.terminal.dispose() } catch (e) {}
+    preview.card.remove()
+    previewTerminals.delete(tabId)
+    renderPreviewSection()
+  }
+
+  function renderPreviewSection() {
+    const section = document.getElementById('preview-section')
+    section.classList.toggle('hidden', previewTerminals.size === 0)
   }
 
   function providerDisplayName(providerID) {

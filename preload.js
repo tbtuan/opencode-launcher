@@ -32,5 +32,8 @@ contextBridge.exposeInMainWorld('api', {
     const handler = (_, code) => cb(code)
     ipcRenderer.on(channel, handler)
     return () => ipcRenderer.removeListener(channel, handler)
-  }
+  },
+
+  // App
+  restartApp: () => ipcRenderer.invoke('app:restart')
 })

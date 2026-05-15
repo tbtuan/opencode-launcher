@@ -30,7 +30,15 @@
         <h1>OpenCode Launcher</h1>
         <div id="dashboard-header-actions">
           <span id="models-last-loaded"></span>
-          <button id="btn-reload-models">&#8635; Modelle neu laden</button>
+          <div id="actions-menu">
+            <button id="btn-actions">Aktionen &#9662;</button>
+            <div id="actions-dropdown" class="hidden">
+              <button id="act-reload-models">&#8635; Modelle neu laden</button>
+              <button id="act-restart-launcher">&#8635; OpenCode Launcher neustarten</button>
+              <hr />
+              <button id="act-settings">&#9881; Einstellungen</button>
+            </div>
+          </div>
           <button id="btn-add-directory">+ Verzeichnis hinzufügen</button>
         </div>
       </div>
@@ -40,19 +48,28 @@
         <div class="no-dirs-text">Noch keine Verzeichnisse</div>
         <div class="no-dirs-hint">Klicke auf <strong>+ Verzeichnis hinzufügen</strong></div>
       </div>
+
+      <div id="preview-section" class="hidden">
+        <div id="preview-header">
+          <span id="preview-section-title">Laufende Terminals</span>
+        </div>
+        <div id="preview-grid"></div>
+      </div>
     </div>
 
     <!-- Terminal-Panes werden per JS eingefügt (.content-pane) -->
 
   </div>
 
-  <!-- Context menu (Rechtsklick auf Tab) -->
+  <!-- Context menu -->
   <div id="context-menu" class="hidden">
-    <button id="ctx-rename">Umbenennen</button>
-    <button id="ctx-change-dir">Verzeichnis ändern</button>
-    <button id="ctx-restart">Neustart</button>
-    <hr />
-    <button id="ctx-close" class="danger">Tab schließen</button>
+    <button id="ctx-rename" data-ctx="tab">Umbenennen</button>
+    <button id="ctx-change-dir" data-ctx="tab">Verzeichnis ändern</button>
+    <button id="ctx-restart" data-ctx="tab">Neustart</button>
+    <hr data-ctx="tab" />
+    <button id="ctx-close" class="danger" data-ctx="tab">Tab schließen</button>
+    <hr data-ctx="card" class="hidden" />
+    <button id="ctx-delete-card" class="danger hidden" data-ctx="card">Kachel entfernen</button>
   </div>
 
   <!-- Speichern-Dialog -->
@@ -69,6 +86,18 @@
         <button id="save-dialog-save-only">Nur speichern</button>
         <button id="save-dialog-no">Nur öffnen</button>
         <button id="save-dialog-cancel">Abbrechen</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Settings Dialog -->
+  <div id="settings-dialog-overlay" class="hidden">
+    <div id="settings-dialog">
+      <div id="settings-dialog-title">Standard-Tab beim Start</div>
+      <div id="settings-dialog-options"></div>
+      <div id="settings-dialog-buttons">
+        <button id="settings-dialog-save">Speichern</button>
+        <button id="settings-dialog-cancel">Abbrechen</button>
       </div>
     </div>
   </div>

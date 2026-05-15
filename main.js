@@ -202,3 +202,9 @@ ipcMain.handle('models:refresh', () => {
   saveConfig(config)
   return { models, timestamp }
 })
+
+// ── IPC: Restart App ─────────────────────────────────────────────────────────
+ipcMain.handle('app:restart', () => {
+  app.relaunch()
+  app.exit()
+})
