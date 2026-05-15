@@ -1,0 +1,19 @@
+{
+  "name": "opencode-launcher",
+  "version": "1.0.0",
+  "description": "Tab-based OpenCode launcher using Electron + xterm.js + node-pty",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "rebuild": "electron-rebuild -f -w node-pty"
+  },
+  "devDependencies": {
+    "@electron/rebuild": "^3.6.0",
+    "electron": "^29.0.0"
+  },
+  "dependencies": {
+    "@xterm/xterm": "^5.5.0",
+    "@xterm/addon-fit": "^0.10.0",
+    "node-pty": "^1.0.0"
+  }
+}

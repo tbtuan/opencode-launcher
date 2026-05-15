@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta http-equiv="Content-Security-Policy"
+    content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline';" />
+  <title>OpenCode Launcher</title>
+  <link rel="stylesheet" href="styles.css" />
+  <link rel="stylesheet" href="../node_modules/@xterm/xterm/css/xterm.css" />
+</head>
+<body>
+
+  <!-- Tab bar (immer sichtbar) -->
+  <div id="tab-bar">
+    <!-- Pinned Home-Tab -->
+    <div id="tab-home" class="tab tab-pinned active" data-id="home" title="Home">
+      <span class="tab-home-icon">&#8962;</span>
+      <span class="tab-label">Home</span>
+    </div>
+    <div id="tabs-container"></div>
+    <button id="btn-add-tab" title="Neues Terminal">+</button>
+  </div>
+
+  <!-- Inhalt-Bereich -->
+  <div id="content-area">
+
+    <!-- Dashboard (Home-Tab Inhalt) -->
+    <div id="dashboard" class="content-pane active">
+      <div id="dashboard-header">
+        <h1>OpenCode Launcher</h1>
+        <div id="dashboard-header-actions">
+          <span id="models-last-loaded"></span>
+          <button id="btn-reload-models">&#8635; Modelle neu laden</button>
+          <button id="btn-add-directory">+ Verzeichnis hinzufügen</button>
+        </div>
+      </div>
+      <div id="cards-grid"></div>
+      <div id="no-dirs" class="hidden">
+        <div class="no-dirs-icon">&#128193;</div>
+        <div class="no-dirs-text">Noch keine Verzeichnisse</div>
+        <div class="no-dirs-hint">Klicke auf <strong>+ Verzeichnis hinzufügen</strong></div>
+      </div>
+    </div>
+
+    <!-- Terminal-Panes werden per JS eingefügt (.content-pane) -->
+
+  </div>
+
+  <!-- Context menu (Rechtsklick auf Tab) -->
+  <div id="context-menu" class="hidden">
+    <button id="ctx-rename">Umbenennen</button>
+    <button id="ctx-change-dir">Verzeichnis ändern</button>
+    <button id="ctx-restart">Neustart</button>
+    <hr />
+    <button id="ctx-close" class="danger">Tab schließen</button>
+  </div>
+
+  <!-- Speichern-Dialog -->
+  <div id="save-dialog-overlay" class="hidden">
+    <div id="save-dialog">
+      <div id="save-dialog-title">Verzeichnis speichern?</div>
+      <div id="save-dialog-path"></div>
+      <div id="save-dialog-name-row">
+        <label>Name:</label>
+        <input id="save-dialog-name" type="text" />
+      </div>
+      <div id="save-dialog-buttons">
+        <button id="save-dialog-yes">Speichern &amp; Öffnen</button>
+        <button id="save-dialog-save-only">Nur speichern</button>
+        <button id="save-dialog-no">Nur öffnen</button>
+        <button id="save-dialog-cancel">Abbrechen</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="../node_modules/@xterm/xterm/lib/xterm.js"></script>
+  <script src="../node_modules/@xterm/addon-fit/lib/addon-fit.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
