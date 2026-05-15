@@ -101,10 +101,11 @@ ipcMain.handle('config:save', (_, config) => {
 })
 
 // ── IPC: Open folder dialog ───────────────────────────────────────────────────
-ipcMain.handle('dialog:openFolder', async () => {
+ipcMain.handle('dialog:openFolder', async (_, lang) => {
+  const title = lang === 'de' ? 'Verzeichnis auswählen' : 'Select Directory'
   const result = await dialog.showOpenDialog({
     properties: ['openDirectory'],
-    title: 'Verzeichnis auswählen'
+    title
   })
   if (result.canceled) return null
   return result.filePaths[0]
@@ -207,4 +208,24 @@ ipcMain.handle('models:refresh', () => {
 ipcMain.handle('app:restart', () => {
   app.relaunch()
   app.exit()
+})
+
+// ── IPC: Load i18n translations ──────────────────────────────────────────────
+ipcMain.handle('i18n:load', async (_, lang) => {
+  const filePath = path.join(__dirname, 'resources', `${lang}.json`)
+  try {
+    return JSON.parse(fs.readFileSync(filePath, 'utf-8'))
+  } catch (e) {
+    return null
+  }
+})
+
+// ── IPC: Read resource file ────────────────────────────────────────────────────
+ipcMain.handle('resource:read', async (_, filename) => {
+  const filePath = path.join(__dirname, 'resources', filename)
+  try {
+    return fs.readFileSync(filePath, 'utf-8')
+  } catch (e) {
+    return null
+  }
 })

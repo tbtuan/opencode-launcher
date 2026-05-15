@@ -6,7 +6,7 @@ contextBridge.exposeInMainWorld('api', {
   saveConfig: (config) => ipcRenderer.invoke('config:save', config),
 
   // Dialog
-  openFolder: () => ipcRenderer.invoke('dialog:openFolder'),
+  openFolder: (lang) => ipcRenderer.invoke('dialog:openFolder', lang),
 
   // Models
   listModels:    () => ipcRenderer.invoke('models:list'),
@@ -35,5 +35,11 @@ contextBridge.exposeInMainWorld('api', {
   },
 
   // App
-  restartApp: () => ipcRenderer.invoke('app:restart')
+  restartApp: () => ipcRenderer.invoke('app:restart'),
+
+  // i18n
+  loadI18n: (lang) => ipcRenderer.invoke('i18n:load', lang),
+
+  // Resources
+  readResource: (filename) => ipcRenderer.invoke('resource:read', filename),
 })

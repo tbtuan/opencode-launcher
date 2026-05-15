@@ -601,6 +601,55 @@ body { display: flex; flex-direction: column; }
   min-width: 0;
 }
 
+.settings-lang-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 12px;
+  margin-top: 8px;
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+.settings-lang-label {
+  font-size: 13px;
+  color: var(--text);
+  font-weight: 500;
+}
+.settings-lang-options {
+  display: flex;
+  gap: 6px;
+}
+.settings-lang-btn {
+  padding: 5px 12px;
+  border-radius: 4px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-dim);
+  cursor: pointer;
+  font-size: 12px;
+  transition: all 0.12s;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.settings-lang-btn svg {
+  width: 18px;
+  height: auto;
+  display: block;
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 2px;
+}
+.settings-lang-btn.active {
+  background: var(--accent);
+  color: #fff;
+  border-color: var(--accent);
+}
+.settings-lang-btn:hover:not(.active) {
+  background: rgba(255,255,255,0.06);
+  color: var(--text);
+}
+
 #settings-dialog-buttons {
   display: flex; gap: 8px; justify-content: flex-end; margin-top: 4px;
 }
@@ -612,6 +661,67 @@ body { display: flex; flex-direction: column; }
 #settings-dialog-save:hover { background: var(--accent-hover); }
 #settings-dialog-cancel { background: transparent; color: var(--text-dim); border: 1px solid var(--border) !important; }
 #settings-dialog-cancel:hover { background: rgba(255,255,255,0.06); color: var(--text); }
+
+/* ── Restart Dialog ──────────────────────────────────────────────────────────── */
+#restart-dialog-overlay {
+  position: fixed; inset: 0; z-index: 11000;
+  background: rgba(0,0,0,0.6);
+  display: flex; align-items: center; justify-content: center;
+}
+#restart-dialog-overlay.hidden { display: none; }
+
+#restart-dialog {
+  background: #252526;
+  border: 1px solid #3c3c3c;
+  border-radius: 8px;
+  padding: 24px 28px;
+  width: 380px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+}
+
+#restart-dialog-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: 12px;
+}
+
+#restart-dialog-text {
+  font-size: 13px;
+  color: var(--text-dim);
+  line-height: 1.5;
+  margin-bottom: 20px;
+}
+
+#restart-dialog-buttons {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+#restart-dialog-yes {
+  padding: 7px 16px;
+  border-radius: 5px;
+  border: none;
+  font-size: 12px;
+  cursor: pointer;
+  background: var(--accent);
+  color: #fff;
+  transition: background 0.12s;
+}
+#restart-dialog-yes:hover { background: var(--accent-hover); }
+
+#restart-dialog-no {
+  padding: 7px 16px;
+  border-radius: 5px;
+  border: 1px solid var(--border);
+  font-size: 12px;
+  cursor: pointer;
+  background: transparent;
+  color: var(--text-dim);
+  transition: background 0.12s;
+}
+#restart-dialog-no:hover { background: rgba(255,255,255,0.06); color: var(--text); }
 
 /* ── Terminal pane ────────────────────────────────────────────────────────── */
 .terminal-pane {

@@ -40,7 +40,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!el) return
     if (!isoString) { el.textContent = ''; return }
     const d = new Date(isoString)
-    el.textContent = `Zuletzt geladen: ${d.toLocaleString('de-DE', {
+    el.textContent = `${i18n.t('models.lastLoaded')} ${d.toLocaleString(i18n.getLanguage() === 'de' ? 'de-DE' : 'en-US', {
       day: '2-digit', month: '2-digit', year: 'numeric',
       hour: '2-digit', minute: '2-digit'
     })}`
@@ -63,9 +63,24 @@ document.addEventListener('DOMContentLoaded', () => {
         savedDirectories.forEach(d => delete d.defaultTab)
       }
       savedDirectories.forEach(d => delete d.defaultTab)
+
+      // Language
+      if (config.language === 'de' || config.language === 'en') {
+        i18n.setLanguage(config.language)
+      } else {
+        i18n.setLanguage(i18n.detectLanguage())
+      }
+      await i18n.loadTranslations(i18n.getLanguage())
+      i18n.applyTranslations()
     } catch (e) {
       console.error('[init]', e)
     }
+
+    // Load SVG flags
+    try {
+      window._flagDe = await window.api.readResource('flag-de.svg')
+      window._flagEn = await window.api.readResource('flag-en.svg')
+    } catch (e) {}
 
     // Modelle laden
     try {
@@ -90,7 +105,7 @@ document.addEventListener('DOMContentLoaded', () => {
       document.getElementById('actions-dropdown').classList.add('hidden')
       const btn = document.getElementById('act-reload-models')
       btn.disabled = true
-      btn.textContent = '↻ Lade...'
+      btn.textContent = i18n.t('loading.models')
       try {
         const result = await window.api.refreshModels()
         availableModels = result.models || []
@@ -98,7 +113,7 @@ document.addEventListener('DOMContentLoaded', () => {
         updateModelsLabel(modelsTimestamp)
       } catch (e) {}
       btn.disabled = false
-      btn.textContent = '↻ Modelle neu laden'
+      btn.textContent = i18n.t('actions.reloadModels')
       renderCards()
     })
 
@@ -230,42 +245,42 @@ document.addEventListener('DOMContentLoaded', () => {
         <div class="dir-card-info">
           <div class="dir-card-name">${escapeHtml(dir.name)}</div>
           <div class="dir-card-path">${escapeHtml(dir.path)}</div>
-          ${dir.description ? `<div class="dir-card-desc">${escapeHtml(dir.description)}</div>` : '<div class="dir-card-desc dir-card-desc--empty">Keine Beschreibung</div>'}
-          ${dir.startOnLaunch ? '<div class="dir-card-autolaunch">&#9654; Start on launch</div>' : ''}
+          ${dir.description ? `<div class="dir-card-desc">${escapeHtml(dir.description)}</div>` : `<div class="dir-card-desc dir-card-desc--empty">${i18n.t('card.noDescription')}</div>`}
+          ${dir.startOnLaunch ? `<div class="dir-card-autolaunch">&#9654; ${i18n.t('editor.startOnLaunch')}</div>` : ''}
           ${dir.defaultTab ? '<div class="dir-card-defaulttab">&#11088; Standard-Tab</div>' : ''}
         </div>
         <div class="dir-card-actions">
-          <button class="dir-card-settings-btn" title="Einstellungen">&#9881;</button>
-          <button class="dir-card-play-btn" title="Terminal starten">&#9654;</button>
-          <button class="dir-card-stop-btn hidden" title="Stoppen &amp; schließen">&#9632;</button>
-          <button class="dir-card-restart-btn hidden" title="Neu starten">&#8635;</button>
+          <button class="dir-card-settings-btn" title="${i18n.t('card.btn.settings')}">&#9881;</button>
+          <button class="dir-card-play-btn" title="${i18n.t('card.btn.play')}">&#9654;</button>
+          <button class="dir-card-stop-btn hidden" title="${i18n.t('card.btn.stop')}">&#9632;</button>
+          <button class="dir-card-restart-btn hidden" title="${i18n.t('card.btn.restart')}">&#8635;</button>
         </div>
       </div>
       <div class="dir-card-model-section">
-        <div class="dir-card-model-label">Bevorzugtes Modell</div>
+        <div class="dir-card-model-label">${i18n.t('models.preferred')}</div>
         <select class="dir-card-model-select"></select>
         <div class="dir-card-model-provider"></div>
       </div>
       <div class="dir-card-editor hidden">
         <div class="dir-card-editor-row">
-          <label>Name</label>
+          <label>${i18n.t('editor.name')}</label>
           <input class="dir-card-editor-name" type="text" value="${escapeHtml(dir.name)}" />
         </div>
         <div class="dir-card-editor-row">
-          <label>Beschreibung</label>
-          <input class="dir-card-editor-desc" type="text" placeholder="optional…" value="${escapeHtml(dir.description || '')}" />
+          <label>${i18n.t('editor.description')}</label>
+          <input class="dir-card-editor-desc" type="text" placeholder="${i18n.t('editor.descriptionPlaceholder')}" value="${escapeHtml(dir.description || '')}" />
         </div>
         <div class="dir-card-editor-row dir-card-editor-row--check">
           <input class="dir-card-editor-launch" type="checkbox" ${dir.startOnLaunch ? 'checked' : ''} />
-          <label>Start on launch</label>
+          <label>${i18n.t('editor.startOnLaunch')}</label>
         </div>
         <div class="dir-card-editor-row dir-card-editor-row--check">
           <input class="dir-card-editor-continue" type="checkbox" ${dir.continueSession ? 'checked' : ''} />
-          <label>Session fortsetzen beim Öffnen</label>
+          <label>${i18n.t('editor.continueSession')}</label>
         </div>
         <div class="dir-card-editor-footer">
-          <button class="dir-card-editor-save">Speichern</button>
-          <button class="dir-card-editor-cancel">Abbrechen</button>
+          <button class="dir-card-editor-save">${i18n.t('editor.save')}</button>
+          <button class="dir-card-editor-cancel">${i18n.t('editor.cancel')}</button>
         </div>
       </div>
     `
@@ -282,7 +297,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Combobox befüllen
     const emptyOpt = document.createElement('option')
     emptyOpt.value = ''
-    emptyOpt.textContent = '— Kein Modell ausgewählt —'
+    emptyOpt.textContent = i18n.t('models.noSelection')
     modelSelect.appendChild(emptyOpt)
     // Modelle nach Provider gruppieren
     const groups = {}
@@ -305,7 +320,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const updateProviderLabel = () => {
       const selected = availableModels.find(m => m.id === modelSelect.value)
-      providerLabel.textContent = selected ? `Provider: ${providerDisplayName(selected.providerID)}` : ''
+      providerLabel.textContent = selected ? `${i18n.t('models.provider')} ${providerDisplayName(selected.providerID)}` : ''
     }
     updateProviderLabel()
 
@@ -420,7 +435,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // ── Ordner-Dialog + Speichern-Dialog ──────────────────────────────────────
   async function openFolderDialog() {
     let folderPath
-    try { folderPath = await window.api.openFolder() } catch (e) { return }
+    try { folderPath = await window.api.openFolder(i18n.getLanguage()) } catch (e) { return }
     if (!folderPath) return
     const defaultName = folderPath.split(/[\\/]/).pop() || folderPath
     showSaveDialog(folderPath, defaultName)
@@ -527,7 +542,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const unsubExit = window.api.onPtyExit(id, (code) => {
       const tab = tabs.find(t => t.id === id)
       if (tab) { tab.status = 'stopped'; renderTabBar() }
-      terminal.write(`\r\n\x1b[33m[Prozess beendet mit Code ${code}]\x1b[0m\r\n`)
+      terminal.write(`\r\n\x1b[33m${i18n.t('terminal.processExited').replace('{code}', code)}\x1b[0m\r\n`)
     })
     terminal.onData((data) => window.api.writePty(id, data))
 
@@ -569,7 +584,7 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     } catch (e) {
       tabObj.status = 'error'
-      terminal.write(`\r\n\x1b[31m[Fehler: ${e.message}]\x1b[0m\r\n`)
+      terminal.write(`\r\n\x1b[31m${i18n.t('terminal.error').replace('{message}', e.message)}\x1b[0m\r\n`)
       renderTabBar()
     }
 
@@ -608,7 +623,7 @@ document.addEventListener('DOMContentLoaded', () => {
       el.innerHTML = `
         <div class="tab-indicator"></div>
         <span class="tab-label" title="${escapeHtml(tab.cwd)}">${escapeHtml(tab.name)}</span>
-        <button class="tab-close" title="Tab schließen">×</button>
+          <button class="tab-close" title="${i18n.t('ctx.closeTab')}">×</button>
       `
       el.addEventListener('click', (e) => {
         if (e.target.classList.contains('tab-close')) return
@@ -768,7 +783,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // ── Config ─────────────────────────────────────────────────────────────────
   function persistConfig() {
-    window.api.saveConfig({ directories: savedDirectories, defaultTab })
+    window.api.saveConfig({ directories: savedDirectories, defaultTab, language: i18n.getLanguage() })
   }
 
   // ── Settings Dialog ────────────────────────────────────────────────────────
@@ -787,10 +802,31 @@ document.addEventListener('DOMContentLoaded', () => {
       options.appendChild(el)
     }
 
-    addOption('home', 'Home', 'Dashboard-Ansicht')
+    addOption('home', 'Home', i18n.t('settings.homeSubtitle'))
     for (const dir of savedDirectories) {
       addOption(dir.path, dir.name, dir.path)
     }
+
+    // Language selector
+    const langRow = document.createElement('div')
+    langRow.className = 'settings-lang-row'
+    const currentLang = i18n.getLanguage()
+    const flagDe = window._flagDe || ''
+    const flagEn = window._flagEn || ''
+    langRow.innerHTML = `
+      <span class="settings-lang-label">${i18n.t('settings.language')}</span>
+      <div class="settings-lang-options">
+        <button class="settings-lang-btn ${currentLang === 'de' ? 'active' : ''}" data-lang="de">${flagDe} Deutsch</button>
+        <button class="settings-lang-btn ${currentLang === 'en' ? 'active' : ''}" data-lang="en">${flagEn} English</button>
+      </div>
+    `
+    langRow.querySelectorAll('.settings-lang-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        langRow.querySelectorAll('.settings-lang-btn').forEach(b => b.classList.remove('active'))
+        btn.classList.add('active')
+      })
+    })
+    options.appendChild(langRow)
 
     overlay.classList.remove('hidden')
     document.querySelectorAll('.dir-card').forEach(c => c.draggable = false)
@@ -800,10 +836,26 @@ document.addEventListener('DOMContentLoaded', () => {
     const selected = document.querySelector('input[name="settings-default-tab"]:checked')
     if (selected) {
       defaultTab = selected.value
+    }
+    const langActive = document.querySelector('.settings-lang-btn.active')
+    const langChanged = langActive && langActive.dataset.lang !== i18n.getLanguage()
+    if (langActive && !langChanged) {
+      i18n.setLanguage(langActive.dataset.lang)
+    }
+    if (langChanged) {
+      window.api.saveConfig({ directories: savedDirectories, defaultTab, language: langActive.dataset.lang })
+    } else {
       persistConfig()
     }
     document.getElementById('settings-dialog-overlay').classList.add('hidden')
     document.querySelectorAll('.dir-card').forEach(c => c.draggable = true)
+    if (langChanged) {
+      showRestartDialog()
+    } else {
+      i18n.applyTranslations()
+      renderCards()
+      updateModelsLabel(modelsTimestamp)
+    }
   })
 
   document.getElementById('settings-dialog-cancel').addEventListener('click', () => {
@@ -815,6 +867,25 @@ document.addEventListener('DOMContentLoaded', () => {
     if (e.target === e.currentTarget) {
       document.getElementById('settings-dialog-overlay').classList.add('hidden')
       document.querySelectorAll('.dir-card').forEach(c => c.draggable = true)
+    }
+  })
+
+  // ── Restart Dialog ─────────────────────────────────────────────────────────
+  function showRestartDialog() {
+    document.getElementById('restart-dialog-overlay').classList.remove('hidden')
+  }
+
+  document.getElementById('restart-dialog-yes').addEventListener('click', () => {
+    window.api.restartApp()
+  })
+
+  document.getElementById('restart-dialog-no').addEventListener('click', () => {
+    document.getElementById('restart-dialog-overlay').classList.add('hidden')
+  })
+
+  document.getElementById('restart-dialog-overlay').addEventListener('click', (e) => {
+    if (e.target === e.currentTarget) {
+      document.getElementById('restart-dialog-overlay').classList.add('hidden')
     }
   })
 
@@ -870,7 +941,7 @@ document.addEventListener('DOMContentLoaded', () => {
     card.innerHTML = `
       <div class="preview-card-header">
         <span class="preview-card-name">${escapeHtml(tab.name)}</span>
-        <span class="preview-card-status">● Läuft</span>
+        <span class="preview-card-status">${i18n.t('preview.running')}</span>
       </div>
       <div class="preview-card-terminal"></div>
     `
