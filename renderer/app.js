@@ -700,7 +700,7 @@ document.addEventListener('DOMContentLoaded', () => {
       el.className = `tab ${tab.status} ${tab.id === activeId ? 'active' : ''}`
       el.dataset.id = tab.id
       el.innerHTML = `
-        <div class="tab-indicator"></div>
+        ${tab.type === 'editor' ? '<span class="tab-editor-icon">✎</span>' : '<div class="tab-indicator"></div>'}
         <span class="tab-label" title="${escapeHtml(tab.type === 'editor' ? tab.filePath : tab.cwd)}">${escapeHtml(tab.type === 'editor' && tab.isDirty ? '* ' : '')}${escapeHtml(tab.displayName || tab.name)}</span>
           <button class="tab-close" title="${i18n.t('ctx.closeTab')}">×</button>
       `
