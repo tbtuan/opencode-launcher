@@ -15,11 +15,13 @@ document.addEventListener('DOMContentLoaded', () => {
   let tabCounter = 0
   let contextMenuTabId = null
   let savedDirectories = []
+  let dirIdCounter = 0
   let availableModels = []  // { id, name, providerID }
   let modelsTimestamp = null
   let savedTabOrder   = []
   let defaultTab      = 'home'
   let draggedTabId    = null
+  let editorTabId     = null
 
   // ── Preview Terminals ──────────────────────────────────────────
   const previewTerminals = new Map() // tabId -> { terminal, fitAddon, container, card }
@@ -52,7 +54,11 @@ document.addEventListener('DOMContentLoaded', () => {
   async function init() {
     try {
       const config = await window.api.loadConfig()
-      savedDirectories = config.directories || []
+      savedDirectories = (config.directories || []).map(d => {
+        if (!d._id) d._id = ++dirIdCounter
+        else dirIdCounter = Math.max(dirIdCounter, d._id)
+        return d
+      })
       savedTabOrder    = config.tabOrder    || []
       defaultTab       = config.defaultTab  || 'home'
 
@@ -129,11 +135,16 @@ document.addEventListener('DOMContentLoaded', () => {
       showSettingsDialog()
     })
 
+    document.getElementById('act-edit-config').addEventListener('click', () => {
+      document.getElementById('actions-dropdown').classList.add('hidden')
+      openConfigEditor()
+    })
+
     // Auto-Launch: Verzeichnisse mit startOnLaunch=true sofort öffnen
     const autoLaunch = savedDirectories.filter(d => d.startOnLaunch)
     const tabIds = []
     for (const dir of autoLaunch) {
-      const id = await createTab(dir.name, dir.path, dir.continueSession ? '--continue' : '')
+      const id = await createTab(dir.name, dir.path, dir.continueSession ? '--continue' : '', dir._id)
       tabIds.push({ id, dir })
     }
 
@@ -147,7 +158,7 @@ document.addEventListener('DOMContentLoaded', () => {
       } else {
         const dir = savedDirectories.find(d => d.path === defaultTab)
         if (dir) {
-          const id = await createTab(dir.name, dir.path, dir.continueSession ? '--continue' : '')
+          const id = await createTab(dir.name, dir.path, dir.continueSession ? '--continue' : '', dir._id)
           activatePane(id)
         } else {
           activatePane(tabIds.length > 0 ? tabIds[tabIds.length - 1].id : 'home')
@@ -171,7 +182,9 @@ document.addEventListener('DOMContentLoaded', () => {
       if (pane) pane.classList.add('active')
       // xterm fitten nach Sichtbarkeit
       const tab = tabs.find(t => t.id === id)
-      if (tab) {
+      if (tab && tab.type === 'editor') {
+        requestAnimationFrame(() => { try { tab.editor.refresh() } catch (e) {} })
+      } else if (tab) {
         tab.lastActivateTime = Date.now()
         requestAnimationFrame(() => {
           try {
@@ -204,7 +217,7 @@ document.addEventListener('DOMContentLoaded', () => {
       card.draggable = true
       card.addEventListener('dragstart', (e) => {
         if (!document.getElementById('settings-dialog-overlay').classList.contains('hidden') || !card.querySelector('.dir-card-editor').classList.contains('hidden')) { e.preventDefault(); return }
-        draggedCardPath = dir.path
+        draggedCardPath = dir._id
         e.dataTransfer.effectAllowed = 'move'
         requestAnimationFrame(() => card.classList.add('dragging'))
       })
@@ -212,13 +225,13 @@ document.addEventListener('DOMContentLoaded', () => {
         e.preventDefault()
         e.dataTransfer.dropEffect = 'move'
         document.querySelectorAll('.dir-card').forEach(c => c.classList.remove('drag-over'))
-        if (draggedCardPath !== dir.path) card.classList.add('drag-over')
+        if (draggedCardPath !== dir._id) card.classList.add('drag-over')
       })
       card.addEventListener('drop', (e) => {
         e.preventDefault()
-        if (!draggedCardPath || draggedCardPath === dir.path) return
-        const fromIdx = savedDirectories.findIndex(d => d.path === draggedCardPath)
-        const toIdx   = savedDirectories.findIndex(d => d.path === dir.path)
+        if (!draggedCardPath || draggedCardPath === dir._id) return
+        const fromIdx = savedDirectories.findIndex(d => d._id === draggedCardPath)
+        const toIdx   = savedDirectories.findIndex(d => d._id === dir._id)
         if (fromIdx !== -1 && toIdx !== -1) {
           savedDirectories.splice(toIdx, 0, savedDirectories.splice(fromIdx, 1)[0])
         }
@@ -239,7 +252,7 @@ document.addEventListener('DOMContentLoaded', () => {
   function createCard(dir) {
     const card = document.createElement('div')
     card.className = 'dir-card'
-    card.dataset.cwd = dir.path
+    card.dataset.dirId = dir._id
     card.innerHTML = `
       <div class="dir-card-view">
         <div class="dir-card-icon">&#128193;</div>
@@ -374,19 +387,19 @@ document.addEventListener('DOMContentLoaded', () => {
 
     card.querySelector('.dir-card-stop-btn').addEventListener('click', (e) => {
       e.stopPropagation()
-      const tab = tabs.find(t => t.cwd === dir.path)
+      const tab = tabs.find(t => t.dirId === dir._id)
       if (tab) closeTab(tab.id)
     })
 
     card.querySelector('.dir-card-restart-btn').addEventListener('click', async (e) => {
       e.stopPropagation()
-      const tab = tabs.find(t => t.cwd === dir.path)
+      const tab = tabs.find(t => t.dirId === dir._id)
       const tabIndex = tab ? tabs.indexOf(tab) : -1
       const wasActive = tab?.id === activeId
       if (tab) await closeTab(tab.id)
       await openTerminalForDir(dir)
       if (tabIndex !== -1) {
-        const newTab = tabs.find(t => t.cwd === dir.path)
+        const newTab = tabs.find(t => t.dirId === dir._id)
         if (newTab) {
           const currentIdx = tabs.indexOf(newTab)
           tabs.splice(currentIdx, 1)
@@ -399,7 +412,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     card.addEventListener('contextmenu', (e) => {
       e.preventDefault()
-      showContextMenu(e.clientX, e.clientY, dir.path, 'card')
+      showContextMenu(e.clientX, e.clientY, String(dir._id), 'card')
     })
 
     card.querySelector('.dir-card-editor-save').addEventListener('click', (e) => {
@@ -423,13 +436,13 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   async function openTerminalForDir(dir) {
-    const existing = tabs.find(t => t.cwd === dir.path)
+    const existing = tabs.find(t => t.dirId === dir._id)
     if (existing) { activatePane(existing.id); return }
     const args = [
       dir.model           ? `--model ${dir.model}` : '',
       dir.continueSession ? '--continue'            : ''
     ].filter(Boolean).join(' ')
-    const id = await createTab(dir.name, dir.path, args)
+    const id = await createTab(dir.name, dir.path, args, dir._id)
     activatePane(id)
   }
 
@@ -455,22 +468,18 @@ document.addEventListener('DOMContentLoaded', () => {
     const onYes = async () => {
       cleanup()
       const name = nameInput.value.trim() || defaultName
-      if (!savedDirectories.find(d => d.path === folderPath)) {
-        savedDirectories.push({ name, path: folderPath })
-        persistConfig()
-        renderCards()
-      }
-      const id = await createTab(name, folderPath)
+      savedDirectories.push({ _id: ++dirIdCounter, name, path: folderPath })
+      persistConfig()
+      renderCards()
+      const id = await createTab(name, folderPath, '', dirIdCounter)
       activatePane(id)
     }
     const onSaveOnly = () => {
       cleanup()
       const name = nameInput.value.trim() || defaultName
-      if (!savedDirectories.find(d => d.path === folderPath)) {
-        savedDirectories.push({ name, path: folderPath })
-        persistConfig()
-        renderCards()
-      }
+      savedDirectories.push({ _id: ++dirIdCounter, name, path: folderPath })
+      persistConfig()
+      renderCards()
     }
     const onNo = async () => {
       cleanup()
@@ -498,7 +507,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // ── Tab erstellen ──────────────────────────────────────────────────────────
-  async function createTab(name, cwd, args = '') {
+  async function createTab(name, cwd, args = '', dirId = null) {
     tabCounter++
     const id = `tab-${tabCounter}`
 
@@ -535,6 +544,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const unsubData = window.api.onPtyData(id, (data) => {
       terminal.write(data)
+      markTabActive(id)
       const preview = previewTerminals.get(id)
       if (preview) {
         try { preview.terminal.write(data) } catch (e) {}
@@ -543,7 +553,7 @@ document.addEventListener('DOMContentLoaded', () => {
     })
     const unsubExit = window.api.onPtyExit(id, (code) => {
       const tab = tabs.find(t => t.id === id)
-      if (tab) { tab.status = 'stopped'; renderTabBar() }
+      if (tab) { tab.status = 'stopped'; recalcDisplayNames(tab.cwd) }
       terminal.write(`\r\n\x1b[33m${i18n.t('terminal.processExited').replace('{code}', code)}\x1b[0m\r\n`)
     })
     terminal.onData((data) => window.api.writePty(id, data))
@@ -572,7 +582,7 @@ document.addEventListener('DOMContentLoaded', () => {
       return true
     })
 
-    const tabObj = { id, name, cwd, terminal, fitAddon, unsubData, unsubExit, status: 'stopped' }
+    const tabObj = { id, name, displayName: name, cwd, dirId, terminal, fitAddon, unsubData, unsubExit, status: 'stopped' }
     tabs.push(tabObj)
     renderTabBar()
 
@@ -580,7 +590,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const result = await window.api.createPty(id, cwd, args)
       if (result?.ok) {
         tabObj.status = 'running'
-        renderTabBar()
+        recalcDisplayNames(cwd)
         window.api.resizePty(id, tabObj.terminal.cols, tabObj.terminal.rows)
         setTimeout(() => createPreviewTerminal(tabObj), 100)
       }
@@ -591,6 +601,73 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     return id
+  }
+
+  // ── OpenCode Config Editor ────────────────────────────────────────────────
+  async function openConfigEditor() {
+    if (editorTabId) {
+      const existing = tabs.find(t => t.id === editorTabId)
+      if (existing) { activatePane(editorTabId); return }
+      editorTabId = null
+    }
+    const result = await window.api.readOpencodeConfig()
+    if (!result) return
+    const id = createEditorTab(result.content, result.filePath)
+    editorTabId = id
+    activatePane(id)
+  }
+
+  function createEditorTab(content, filePath) {
+    tabCounter++
+    const id = `tab-${tabCounter}`
+
+    const pane = document.createElement('div')
+    pane.className = 'content-pane editor-pane'
+    pane.id = `pane-${id}`
+    contentArea.appendChild(pane)
+
+    const editor = CodeMirror(pane, {
+      value: content,
+      mode: { name: 'javascript', json: true },
+      theme: 'default',
+      lineNumbers: true,
+      indentUnit: 2,
+      tabSize: 2,
+      indentWithTabs: true,
+      electricChars: true,
+      matchBrackets: true,
+      autoCloseBrackets: false,
+      styleActiveLine: true,
+      viewportMargin: Infinity,
+      extraKeys: { 'Ctrl-S': () => handleEditorSave(id) }
+    })
+    editor.getWrapperElement().style.height = '100%'
+
+    const tabObj = { id, name: 'opencode.json', displayName: 'opencode.json', type: 'editor', filePath, content, editor, isDirty: false, status: 'running' }
+    tabs.push(tabObj)
+
+    editor.on('change', () => {
+      const dirty = editor.getValue() !== tabObj.content
+      if (tabObj.isDirty !== dirty) {
+        tabObj.isDirty = dirty
+        renderTabBar()
+      }
+    })
+
+    renderTabBar()
+    return id
+  }
+
+  async function handleEditorSave(id) {
+    const tab = tabs.find(t => t.id === id)
+    if (!tab || tab.type !== 'editor') return
+    const content = tab.editor.getValue()
+    const result = await window.api.writeOpencodeConfig(content, tab.filePath)
+    if (result.ok) {
+      tab.isDirty = false
+      tab.content = content
+      renderTabBar()
+    }
   }
 
   // ── Tab-Reihenfolge ────────────────────────────────────────────────────────
@@ -624,7 +701,7 @@ document.addEventListener('DOMContentLoaded', () => {
       el.dataset.id = tab.id
       el.innerHTML = `
         <div class="tab-indicator"></div>
-        <span class="tab-label" title="${escapeHtml(tab.cwd)}">${escapeHtml(tab.name)}</span>
+        <span class="tab-label" title="${escapeHtml(tab.type === 'editor' ? tab.filePath : tab.cwd)}">${escapeHtml(tab.type === 'editor' && tab.isDirty ? '* ' : '')}${escapeHtml(tab.displayName || tab.name)}</span>
           <button class="tab-close" title="${i18n.t('ctx.closeTab')}">×</button>
       `
       el.addEventListener('click', (e) => {
@@ -674,8 +751,9 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // Karten-Buttons mit Tab-Status synchronisieren
-    document.querySelectorAll('.dir-card[data-cwd]').forEach(card => {
-      const dir = savedDirectories.find(d => d.path === card.dataset.cwd)
+    document.querySelectorAll('.dir-card[data-dir-id]').forEach(card => {
+      const dirId = Number(card.dataset.dirId)
+      const dir = savedDirectories.find(d => d._id === dirId)
       if (dir) updateCardState(card, dir)
     })
   }
@@ -685,13 +763,21 @@ document.addEventListener('DOMContentLoaded', () => {
     const idx = tabs.findIndex(t => t.id === id)
     if (idx === -1) return
     const tab = tabs[idx]
-    try { tab.unsubData() } catch (e) {}
-    try { tab.unsubExit() } catch (e) {}
-    try { await window.api.killPty(id) } catch (e) {}
-    try { tab.terminal.dispose() } catch (e) {}
-    document.getElementById(`pane-${id}`)?.remove()
-    removePreviewTerminal(id)
-    tabs.splice(idx, 1)
+    if (tab.type === 'editor') {
+      document.getElementById(`pane-${id}`)?.remove()
+      if (editorTabId === id) editorTabId = null
+      tabs.splice(idx, 1)
+    } else {
+      try { tab.unsubData() } catch (e) {}
+      try { tab.unsubExit() } catch (e) {}
+      try { await window.api.killPty(id) } catch (e) {}
+      try { tab.terminal.dispose() } catch (e) {}
+      document.getElementById(`pane-${id}`)?.remove()
+      removePreviewTerminal(id)
+      const closedCwd = tab.cwd
+      tabs.splice(idx, 1)
+      recalcDisplayNames(closedCwd)
+    }
 
     if (activeId === id) {
       if (tabs.length > 0) {
@@ -707,8 +793,13 @@ document.addEventListener('DOMContentLoaded', () => {
   // ── Context Menu ───────────────────────────────────────────────────────────
   function showContextMenu(x, y, targetId, type = 'tab') {
     contextMenuTabId = targetId
+    // Editor-Tab: nur Speichern + Schließen
+    const tab = tabs.find(t => t.id === targetId)
+    const isEditor = tab?.type === 'editor'
     contextMenu.querySelectorAll('[data-ctx]').forEach(el => {
-      el.classList.toggle('hidden', el.dataset.ctx !== type)
+      const ctx = el.dataset.ctx.split(' ')
+      const match = isEditor ? ctx.includes('editor') : ctx.includes(type)
+      el.classList.toggle('hidden', !match)
     })
     contextMenu.classList.remove('hidden')
     contextMenu.style.left = `${x}px`
@@ -734,7 +825,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const input = document.createElement('input')
     input.type = 'text'; input.className = 'tab-rename-input'; input.value = tab.name
     labelEl.replaceWith(input); input.focus(); input.select()
-    const commit = () => { tab.name = input.value.trim() || tab.name; renderTabBar() }
+    const commit = () => { tab.name = input.value.trim() || tab.name; recalcDisplayNames(tab.cwd) }
     input.addEventListener('blur', commit)
     input.addEventListener('keydown', (e) => {
       if (e.key === 'Enter')  { e.preventDefault(); input.blur() }
@@ -749,10 +840,11 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!tab) return
     const newPath = await window.api.openFolder()
     if (!newPath) return
+    const oldCwd = tab.cwd
     tab.cwd = newPath
     try {
       const result = await window.api.createPty(id, newPath)
-      if (result?.ok) { tab.status = 'running'; renderTabBar() }
+      if (result?.ok) { tab.status = 'running'; recalcDisplayNames(oldCwd); recalcDisplayNames(newPath) }
     } catch (e) { console.error(e) }
   })
 
@@ -766,7 +858,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (preview) { try { preview.terminal.clear() } catch (e) {} }
     try {
       const result = await window.api.createPty(id, tab.cwd)
-      if (result?.ok) { tab.status = 'running'; renderTabBar() }
+      if (result?.ok) { tab.status = 'running'; recalcDisplayNames(tab.cwd) }
     } catch (e) { console.error(e) }
   })
 
@@ -775,10 +867,18 @@ document.addEventListener('DOMContentLoaded', () => {
     if (id) closeTab(id)
   })
 
+  document.getElementById('ctx-save').addEventListener('click', () => {
+    const id = contextMenuTabId; hideContextMenu()
+    if (id) handleEditorSave(id)
+  })
+
   document.getElementById('ctx-delete-card').addEventListener('click', () => {
-    const path = contextMenuTabId; hideContextMenu()
-    if (!path) return
-    savedDirectories = savedDirectories.filter(d => d.path !== path)
+    const id = Number(contextMenuTabId); hideContextMenu()
+    if (!id) return
+    savedDirectories = savedDirectories.filter(d => d._id !== id)
+    // Auch zugehörige Tabs schließen
+    const tab = tabs.find(t => t.dirId === id)
+    if (tab) closeTab(tab.id)
     persistConfig()
     renderCards()
   })
@@ -895,7 +995,7 @@ document.addEventListener('DOMContentLoaded', () => {
   new ResizeObserver(() => {
     if (activeId === 'home') return
     const tab = tabs.find(t => t.id === activeId)
-    if (tab) {
+    if (tab && tab.type !== 'editor') {
       try {
         tab.fitAddon.fit()
         window.api.resizePty(activeId, tab.terminal.cols, tab.terminal.rows)
@@ -910,6 +1010,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // ── Keyboard Shortcuts ─────────────────────────────────────────────────────
   document.addEventListener('keydown', (e) => {
+    if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+      e.preventDefault()
+      if (editorTabId && document.getElementById(`pane-${editorTabId}`)?.classList.contains('active')) {
+        handleEditorSave(editorTabId)
+        return
+      }
+    }
     if (e.ctrlKey && e.key === 't') { e.preventDefault(); openFolderDialog() }
     if (e.ctrlKey && e.key === 'w') { e.preventDefault(); if (activeId !== 'home') closeTab(activeId) }
     if (e.ctrlKey && e.key === 'Tab') {
@@ -922,13 +1029,36 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   })
 
+  // ── Display-Names für Mehrfach-Instanzen ────────────────────────────────────
+  function recalcDisplayNames(cwd) {
+    const sameCwd = tabs.filter(t => t.cwd === cwd)
+    const running = sameCwd.filter(t => t.status === 'running')
+    running.sort((a, b) => {
+      const na = parseInt(a.id.split('-')[1]), nb = parseInt(b.id.split('-')[1])
+      return na - nb
+    })
+    running.forEach((t, i) => { t.displayName = i === 0 ? t.name : `${t.name} (${i})` })
+    sameCwd.filter(t => t.status !== 'running').forEach(t => { t.displayName = t.name })
+    renderTabBar()
+    // Preview-Header updaten
+    for (const t of sameCwd) {
+      const p = previewTerminals.get(t.id)
+      if (p) {
+        const el = p.card.querySelector('.preview-card-name')
+        if (el) el.textContent = t.displayName
+      }
+    }
+  }
+
   // ── Utils ──────────────────────────────────────────────────────────────────
   function updateCardState(card, dir) {
-    const tab = tabs.find(t => t.cwd === dir.path)
+    const tab = tabs.find(t => t.dirId === dir._id)
     const running = tab?.status === 'running'
     card.querySelector('.dir-card-play-btn').classList.toggle('hidden', running)
     card.querySelector('.dir-card-stop-btn').classList.toggle('hidden', !running)
     card.querySelector('.dir-card-restart-btn').classList.toggle('hidden', !running)
+    const nameEl = card.querySelector('.dir-card-name')
+    if (nameEl) nameEl.textContent = running && tab.displayName ? tab.displayName : dir.name
   }
 
   // ── Preview Terminals ─────────────────────────────────────────
@@ -942,7 +1072,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     card.innerHTML = `
       <div class="preview-card-header">
-        <span class="preview-card-name">${escapeHtml(tab.name)}</span>
+        <span class="preview-card-name">${escapeHtml(tab.displayName || tab.name)}</span>
         <span class="preview-card-status preview-active"><span class="preview-activity-dot"></span> ${i18n.t('preview.processing')}</span>
       </div>
       <div class="preview-card-terminal"></div>
@@ -994,6 +1124,22 @@ document.addEventListener('DOMContentLoaded', () => {
     preview.activeTimeout = setTimeout(() => {
       preview.activeStatus.classList.remove('preview-active')
       preview.activeStatus.childNodes[1].textContent = ` ${i18n.t('preview.running')}`
+    }, idleTimeout)
+  }
+
+  function markTabActive(tabId) {
+    const tab = tabs.find(t => t.id === tabId)
+    if (!tab || tab.type === 'editor') return
+    if (tab.lastActivateTime && Date.now() - tab.lastActivateTime < 1500) return
+    const preview = previewTerminals.get(tabId)
+    const elapsed = preview ? Date.now() - preview.createdAt : 0
+    const idleTimeout = elapsed < 10000 ? 2500 : 2000
+    const indicator = document.querySelector(`.tab[data-id="${tabId}"] .tab-indicator`)
+    if (!indicator) return
+    indicator.classList.add('active')
+    clearTimeout(tab._tabActiveTimeout)
+    tab._tabActiveTimeout = setTimeout(() => {
+      indicator.classList.remove('active')
     }, idleTimeout)
   }
 

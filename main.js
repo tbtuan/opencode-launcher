@@ -210,6 +210,50 @@ ipcMain.handle('app:restart', () => {
   app.exit()
 })
 
+// ── IPC: Read OpenCode config ──────────────────────────────────────────────────
+ipcMain.handle('config:opencode:read', () => {
+  let configPath
+
+  // 1. OPENCODE_CONFIG env var
+  if (process.env.OPENCODE_CONFIG) {
+    configPath = process.env.OPENCODE_CONFIG
+  } else {
+    // 2. OS-spezifischer Default
+    const home = process.env.USERPROFILE || process.env.HOME
+    configPath = path.join(home, '.config', 'opencode', 'opencode.json')
+  }
+
+  // Sicherstellen, dass das Verzeichnis existiert
+  const dir = path.dirname(configPath)
+  if (!fs.existsSync(dir)) {
+    try { fs.mkdirSync(dir, { recursive: true }) } catch (e) {}
+  }
+
+  // Datei lesen oder minimales JSON anlegen
+  let content
+  if (fs.existsSync(configPath)) {
+    content = fs.readFileSync(configPath, 'utf-8')
+  } else {
+    content = JSON.stringify({ "$schema": "https://opencode.ai/config.json" }, null, 2)
+    try { fs.writeFileSync(configPath, content, 'utf-8') } catch (e) {}
+  }
+
+  return { content, filePath: configPath }
+})
+
+// ── IPC: Write OpenCode config ─────────────────────────────────────────────────
+ipcMain.handle('config:opencode:write', (_, { content, filePath }) => {
+  if (!filePath) return { ok: false, error: 'No file path provided' }
+  try {
+    // JSON-Validierung vor dem Schreiben
+    JSON.parse(content)
+    fs.writeFileSync(filePath, content, 'utf-8')
+    return { ok: true }
+  } catch (e) {
+    return { ok: false, error: e.message }
+  }
+})
+
 // ── IPC: Load i18n translations ──────────────────────────────────────────────
 ipcMain.handle('i18n:load', async (_, lang) => {
   const filePath = path.join(__dirname, 'resources', `${lang}.json`)

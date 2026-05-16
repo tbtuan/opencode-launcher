@@ -7,6 +7,7 @@
   <title>OpenCode Launcher</title>
   <link rel="stylesheet" href="styles.css" />
   <link rel="stylesheet" href="../node_modules/@xterm/xterm/css/xterm.css" />
+  <link rel="stylesheet" href="../node_modules/codemirror/lib/codemirror.css" />
 </head>
 <body>
 
@@ -34,6 +35,7 @@
             <button id="btn-actions"><span data-i18n="actions.title">Aktionen</span> &#9662;</button>
             <div id="actions-dropdown" class="hidden">
               <button id="act-reload-models" data-i18n="actions.reloadModels">&#8635; Modelle neu laden</button>
+              <button id="act-edit-config" data-i18n="actions.editConfig">&#9998; OpenCode Config bearbeiten</button>
               <button id="act-restart-launcher" data-i18n="actions.restartLauncher">&#8635; OpenCode Launcher neustarten</button>
               <hr />
               <button id="act-settings" data-i18n="actions.settings">&#9881; Einstellungen</button>
@@ -63,11 +65,13 @@
 
   <!-- Context menu -->
   <div id="context-menu" class="hidden">
+    <button id="ctx-save" data-ctx="editor" data-i18n="ctx.save">Speichern</button>
+    <hr data-ctx="editor" />
     <button id="ctx-rename" data-ctx="tab" data-i18n="ctx.rename">Umbenennen</button>
     <button id="ctx-change-dir" data-ctx="tab" data-i18n="ctx.changeDir">Verzeichnis ändern</button>
     <button id="ctx-restart" data-ctx="tab" data-i18n="ctx.restart">Neustart</button>
     <hr data-ctx="tab" />
-    <button id="ctx-close" class="danger" data-ctx="tab" data-i18n="ctx.closeTab">Tab schließen</button>
+    <button id="ctx-close" class="danger" data-ctx="tab editor" data-i18n="ctx.closeTab">Tab schließen</button>
     <hr data-ctx="card" class="hidden" />
     <button id="ctx-delete-card" class="danger hidden" data-ctx="card" data-i18n="ctx.removeCard">Kachel entfernen</button>
   </div>
@@ -116,6 +120,10 @@
 
   <script src="../node_modules/@xterm/xterm/lib/xterm.js"></script>
   <script src="../node_modules/@xterm/addon-fit/lib/addon-fit.js"></script>
+  <script src="../node_modules/codemirror/lib/codemirror.js"></script>
+  <script src="../node_modules/codemirror/mode/javascript/javascript.js"></script>
+  <script src="../node_modules/codemirror/addon/selection/active-line.js"></script>
+  <script src="../node_modules/codemirror/addon/edit/matchbrackets.js"></script>
   <script src="i18n.js"></script>
   <script src="app.js"></script>
 </body>

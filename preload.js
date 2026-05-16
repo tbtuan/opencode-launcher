@@ -42,4 +42,8 @@ contextBridge.exposeInMainWorld('api', {
 
   // Resources
   readResource: (filename) => ipcRenderer.invoke('resource:read', filename),
+
+  // OpenCode Config
+  readOpencodeConfig:    () => ipcRenderer.invoke('config:opencode:read'),
+  writeOpencodeConfig:   (content, filePath) => ipcRenderer.invoke('config:opencode:write', { content, filePath }),
 })
