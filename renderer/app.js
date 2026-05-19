@@ -185,7 +185,8 @@ document.addEventListener('DOMContentLoaded', () => {
       if (tab && tab.type === 'editor') {
         requestAnimationFrame(() => { try { tab.editor.refresh() } catch (e) {} })
       } else if (tab) {
-        tab.lastActivateTime = Date.now()
+        // Suppress indicator during resize to prevent false "processing" detection
+        tab.suppressIndicator?.(500)
         requestAnimationFrame(() => {
           try {
             tab.fitAddon.fit()
@@ -542,13 +543,84 @@ document.addEventListener('DOMContentLoaded', () => {
     // Sofort wieder ausblenden – activatePane übernimmt das
     pane.classList.remove('active')
 
+    // Track write state for accurate processing/idle indicators using debounce
+    let writeIdleTimeout = null
+    let isUserAction = false
+    let userActionTimeout = null
+
+    // Track user input to distinguish echoes from real shell output
+    let recentInputSize = 0
+    let inputTimeout = null
+
+    // Suppress indicator during user-initiated actions (typing, scrolling, resizing)
+    const suppressIndicator = (ms = 300) => {
+      isUserAction = true
+      clearTimeout(userActionTimeout)
+      userActionTimeout = setTimeout(() => { isUserAction = false }, ms)
+    }
+
+    // Detect user typing
+    terminal.onKey(() => suppressIndicator(300))
+
+    // Detect mouse scrolling (listen on terminal element, not textarea)
+    setTimeout(() => {
+      terminal.element?.addEventListener('wheel', () => suppressIndicator(500), { passive: true })
+    }, 50)
+
+    // Track user input to distinguish echoes from real shell output
+    terminal.onData((data) => {
+      recentInputSize += data.length
+      clearTimeout(inputTimeout)
+      inputTimeout = setTimeout(() => { recentInputSize = 0 }, 500)
+    })
+
+    const setProcessing = () => {
+      clearTimeout(writeIdleTimeout)
+      // Tab indicator → processing
+      const indicator = document.querySelector(`.tab[data-id="${id}"] .tab-indicator`)
+      if (indicator) indicator.classList.add('active')
+      // Preview status → processing
+      const preview = previewTerminals.get(id)
+      if (preview) {
+        preview.activeStatus.classList.add('preview-active')
+        preview.activeStatus.childNodes[1].textContent = ` ${i18n.t('preview.processing')}`
+      }
+    }
+
+    const setIdle = () => {
+      // Tab indicator → idle
+      const indicator = document.querySelector(`.tab[data-id="${id}"] .tab-indicator`)
+      if (indicator) indicator.classList.remove('active')
+      // Preview status → idle
+      const preview = previewTerminals.get(id)
+      if (preview) {
+        preview.activeStatus.classList.remove('preview-active')
+        preview.activeStatus.childNodes[1].textContent = ` ${i18n.t('preview.running')}`
+      }
+    }
+
+    const unsubWriteParsed = terminal.onWriteParsed(() => {
+      clearTimeout(writeIdleTimeout)
+      writeIdleTimeout = setTimeout(() => setIdle(), 200)
+    })
+
+    const unsubAll = () => {
+      unsubWriteParsed()
+      clearTimeout(writeIdleTimeout)
+      clearTimeout(userActionTimeout)
+      clearTimeout(inputTimeout)
+    }
+
     const unsubData = window.api.onPtyData(id, (data) => {
       terminal.write(data)
-      markTabActive(id)
+      // Only trigger if output is substantial AND not just echoing user input
+      // Output is "real" if it's >100 bytes OR significantly larger than recent input
+      if (!isUserAction && (data.length > 100 || data.length > recentInputSize * 1.5)) {
+        setProcessing()
+      }
       const preview = previewTerminals.get(id)
       if (preview) {
         try { preview.terminal.write(data) } catch (e) {}
-        markPreviewActive(id)
       }
     })
     const unsubExit = window.api.onPtyExit(id, (code) => {
@@ -589,9 +661,12 @@ document.addEventListener('DOMContentLoaded', () => {
       terminal.input('\x1b[200~' + text + '\x1b[201~')
     })
 
-    const tabObj = { id, name, displayName: name, cwd, dirId, terminal, fitAddon, unsubData, unsubExit, unsubPaste, status: 'stopped' }
+    const tabObj = { id, name, displayName: name, cwd, dirId, terminal, fitAddon, unsubData, unsubExit, unsubAll, unsubPaste, suppressIndicator, status: 'stopped' }
     tabs.push(tabObj)
     renderTabBar()
+
+    // Set initial idle state once tab is rendered
+    setIdle()
 
     try {
       const result = await window.api.createPty(id, cwd, args)
@@ -777,6 +852,7 @@ document.addEventListener('DOMContentLoaded', () => {
     } else {
       try { tab.unsubData() } catch (e) {}
       try { tab.unsubExit() } catch (e) {}
+      try { tab.unsubAll() } catch (e) {}
       try { tab.unsubPaste() } catch (e) {}
       try { await window.api.killPty(id) } catch (e) {}
       try { tab.terminal.dispose() } catch (e) {}
@@ -1115,40 +1191,8 @@ document.addEventListener('DOMContentLoaded', () => {
     terminal.open(termContainer)
     termContainer.style.height = `${tab.terminal.rows * Math.round(6 * 1.2) + 40}px`
 
-    previewTerminals.set(tab.id, { terminal, container: termContainer, card, activeDot: card.querySelector('.preview-activity-dot'), activeStatus: card.querySelector('.preview-card-status'), activeTimeout: null, createdAt: Date.now() })
+    previewTerminals.set(tab.id, { terminal, container: termContainer, card, activeDot: card.querySelector('.preview-activity-dot'), activeStatus: card.querySelector('.preview-card-status'), createdAt: Date.now() })
     renderPreviewSection()
-  }
-
-  function markPreviewActive(tabId) {
-    const preview = previewTerminals.get(tabId)
-    if (!preview) return
-    const tab = tabs.find(t => t.id === tabId)
-    if (tab && tab.lastActivateTime && Date.now() - tab.lastActivateTime < 1500) return
-    const elapsed = Date.now() - preview.createdAt
-    const idleTimeout = elapsed < 10000 ? 2500 : 2000
-    preview.activeStatus.classList.add('preview-active')
-    preview.activeStatus.childNodes[1].textContent = ` ${i18n.t('preview.processing')}`
-    clearTimeout(preview.activeTimeout)
-    preview.activeTimeout = setTimeout(() => {
-      preview.activeStatus.classList.remove('preview-active')
-      preview.activeStatus.childNodes[1].textContent = ` ${i18n.t('preview.running')}`
-    }, idleTimeout)
-  }
-
-  function markTabActive(tabId) {
-    const tab = tabs.find(t => t.id === tabId)
-    if (!tab || tab.type === 'editor') return
-    if (tab.lastActivateTime && Date.now() - tab.lastActivateTime < 1500) return
-    const preview = previewTerminals.get(tabId)
-    const elapsed = preview ? Date.now() - preview.createdAt : 0
-    const idleTimeout = elapsed < 10000 ? 2500 : 2000
-    const indicator = document.querySelector(`.tab[data-id="${tabId}"] .tab-indicator`)
-    if (!indicator) return
-    indicator.classList.add('active')
-    clearTimeout(tab._tabActiveTimeout)
-    tab._tabActiveTimeout = setTimeout(() => {
-      indicator.classList.remove('active')
-    }, idleTimeout)
   }
 
   function removePreviewTerminal(tabId) {
