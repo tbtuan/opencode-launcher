@@ -558,6 +558,8 @@ document.addEventListener('DOMContentLoaded', () => {
     let isUserAction = false
     let userActionTimeout = null
     let isProcessing = false
+    let isOpenCodeStarting = false
+    let openCodeReadyTimeout = null
 
     // Track user input to distinguish echoes from real shell output
     let recentInputSize = 0
@@ -577,6 +579,45 @@ document.addEventListener('DOMContentLoaded', () => {
     setTimeout(() => {
       terminal.element?.addEventListener('wheel', () => suppressIndicator(500), { passive: true })
     }, 50)
+
+    // Track OpenCode startup — keep indicator yellow until TUI is ready
+    let tuiCheckInterval = null
+
+    const unsubOpencodeStarted = window.api.onOpencodeStarted(id, () => {
+      isOpenCodeStarting = true
+      setProcessing()
+      clearTimeout(openCodeReadyTimeout)
+
+      // Poll terminal state every 200ms to detect TUI readiness
+      tuiCheckInterval = setInterval(() => {
+        const buffer = terminal.buffer.active
+        const rows = terminal.rows
+        // TUI is ready when cursor is at bottom and screen has content
+        if (buffer.cursorY >= rows - 3) {
+          let rowsWithContent = 0
+          for (let y = 0; y < rows; y++) {
+            const line = buffer.getLine(y)
+            if (line && line.translateToString().trim().length > 0) {
+              rowsWithContent++
+            }
+          }
+          if (rowsWithContent >= rows * 0.5) {
+            clearInterval(tuiCheckInterval)
+            tuiCheckInterval = null
+            isOpenCodeStarting = false
+          }
+        }
+      }, 200)
+
+      // Fallback: timeout after 5s in case detection fails
+      openCodeReadyTimeout = setTimeout(() => {
+        if (tuiCheckInterval) {
+          clearInterval(tuiCheckInterval)
+          tuiCheckInterval = null
+        }
+        isOpenCodeStarting = false
+      }, 5000)
+    })
 
     // Track user input to distinguish echoes from real shell output
     terminal.onData((data) => {
@@ -600,6 +641,9 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     const setIdle = () => {
+      // Don't go idle during OpenCode startup
+      if (isOpenCodeStarting) return
+
       isProcessing = false
       // Tab indicator → idle
       const indicator = document.querySelector(`.tab[data-id="${id}"] .tab-indicator`)
@@ -619,16 +663,23 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const unsubAll = () => {
       unsubWriteParsed()
+      unsubOpencodeStarted()
       clearTimeout(writeIdleTimeout)
       clearTimeout(userActionTimeout)
       clearTimeout(inputTimeout)
+      clearTimeout(openCodeReadyTimeout)
+      if (tuiCheckInterval) {
+        clearInterval(tuiCheckInterval)
+        tuiCheckInterval = null
+      }
     }
 
     const unsubData = window.api.onPtyData(id, (data) => {
       terminal.write(data)
-      // Only trigger if output is substantial AND not just echoing user input
-      // Output is "real" if it's >100 bytes OR significantly larger than recent input
-      if (!isUserAction && (data.length > 100 || data.length > recentInputSize * 1.5)) {
+      // During OpenCode startup, always show processing
+      if (isOpenCodeStarting) {
+        setProcessing()
+      } else if (!isUserAction && (data.length > 100 || data.length > recentInputSize * 1.5)) {
         setProcessing()
       }
       const preview = previewTerminals.get(id)
@@ -679,9 +730,6 @@ document.addEventListener('DOMContentLoaded', () => {
     tabs.push(tabObj)
     renderTabBar()
 
-    // Set initial idle state once tab is rendered
-    setIdle()
-
     try {
       const result = await window.api.createPty(id, cwd, args)
       if (result?.ok) {
@@ -689,6 +737,8 @@ document.addEventListener('DOMContentLoaded', () => {
         recalcDisplayNames(cwd)
         window.api.resizePty(id, tabObj.terminal.cols, tabObj.terminal.rows)
         setTimeout(() => createPreviewTerminal(tabObj), 100)
+        // Set indicator yellow immediately - PTY is running
+        setProcessing()
       }
     } catch (e) {
       tabObj.status = 'error'

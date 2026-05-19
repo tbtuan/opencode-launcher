@@ -154,6 +154,8 @@ ipcMain.handle('pty:create', (_, { tabId, cwd, args }) => {
     if (ptyProcesses.has(tabId)) {
       const cmd = args ? `opencode ${args}\r` : 'opencode\r'
       ptyProc.write(cmd)
+      // Signal renderer that opencode is starting
+      mainWindow?.webContents.send(`opencode:started:${tabId}`)
     }
   }, 500)
 

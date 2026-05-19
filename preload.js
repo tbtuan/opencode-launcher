@@ -55,5 +55,11 @@ contextBridge.exposeInMainWorld('api', {
     ipcRenderer.on(channel, handler)
     return () => ipcRenderer.removeListener(channel, handler)
   },
+  onOpencodeStarted: (tabId, cb) => {
+    const channel = `opencode:started:${tabId}`
+    const handler = () => cb()
+    ipcRenderer.on(channel, handler)
+    return () => ipcRenderer.removeListener(channel, handler)
+  },
   writeClipboard: (text) => ipcRenderer.invoke('clipboard:write', text),
 })
