@@ -185,6 +185,16 @@ document.addEventListener('DOMContentLoaded', () => {
       if (tab && tab.type === 'editor') {
         requestAnimationFrame(() => { try { tab.editor.refresh() } catch (e) {} })
       } else if (tab) {
+        // Restore indicator to actual processing state to avoid brief green flash on tab switch
+        if (tab.isProcessing()) {
+          const indicator = document.querySelector(`.tab[data-id="${id}"] .tab-indicator`)
+          if (indicator) indicator.classList.add('active')
+          const preview = previewTerminals.get(id)
+          if (preview) {
+            preview.activeStatus.classList.add('preview-active')
+            preview.activeStatus.childNodes[1].textContent = ` ${i18n.t('preview.processing')}`
+          }
+        }
         // Suppress indicator during resize to prevent false "processing" detection
         tab.suppressIndicator?.(500)
         requestAnimationFrame(() => {
@@ -547,6 +557,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let writeIdleTimeout = null
     let isUserAction = false
     let userActionTimeout = null
+    let isProcessing = false
 
     // Track user input to distinguish echoes from real shell output
     let recentInputSize = 0
@@ -575,6 +586,7 @@ document.addEventListener('DOMContentLoaded', () => {
     })
 
     const setProcessing = () => {
+      isProcessing = true
       clearTimeout(writeIdleTimeout)
       // Tab indicator → processing
       const indicator = document.querySelector(`.tab[data-id="${id}"] .tab-indicator`)
@@ -588,6 +600,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     const setIdle = () => {
+      isProcessing = false
       // Tab indicator → idle
       const indicator = document.querySelector(`.tab[data-id="${id}"] .tab-indicator`)
       if (indicator) indicator.classList.remove('active')
@@ -658,10 +671,11 @@ document.addEventListener('DOMContentLoaded', () => {
     }, 50)
 
     const unsubPaste = window.api.onPasteComplete(id, (text) => {
+      suppressIndicator(1000)
       terminal.input('\x1b[200~' + text + '\x1b[201~')
     })
 
-    const tabObj = { id, name, displayName: name, cwd, dirId, terminal, fitAddon, unsubData, unsubExit, unsubAll, unsubPaste, suppressIndicator, status: 'stopped' }
+    const tabObj = { id, name, displayName: name, cwd, dirId, terminal, fitAddon, unsubData, unsubExit, unsubAll, unsubPaste, suppressIndicator, isProcessing: () => isProcessing, status: 'stopped' }
     tabs.push(tabObj)
     renderTabBar()
 
