@@ -46,4 +46,14 @@ contextBridge.exposeInMainWorld('api', {
   // OpenCode Config
   readOpencodeConfig:    () => ipcRenderer.invoke('config:opencode:read'),
   writeOpencodeConfig:   (content, filePath) => ipcRenderer.invoke('config:opencode:write', { content, filePath }),
+
+  // Paste: Main reads clipboard, sends text back
+  triggerPaste: (tabId) => ipcRenderer.send('terminal-paste', { tabId }),
+  onPasteComplete: (tabId, cb) => {
+    const channel = `paste-content:${tabId}`
+    const handler = (_, text) => cb(text)
+    ipcRenderer.on(channel, handler)
+    return () => ipcRenderer.removeListener(channel, handler)
+  },
+  writeClipboard: (text) => ipcRenderer.invoke('clipboard:write', text),
 })

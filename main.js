@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, dialog, Menu } = require('electron')
+const { app, BrowserWindow, ipcMain, clipboard, dialog, Menu } = require('electron')
 const path = require('path')
 const fs = require('fs')
 const pty = require('node-pty')
@@ -119,7 +119,13 @@ ipcMain.handle('pty:create', (_, { tabId, cwd, args }) => {
     ptyProcesses.delete(tabId)
   }
 
-  const shell = 'powershell.exe'
+  const shell = process.platform === 'win32'
+    ? 'pwsh.exe'
+    : process.platform === 'darwin'
+      ? '/bin/zsh'
+      : process.platform === 'linux'
+        ? (process.env.SHELL || '/bin/bash')
+        : 'sh'
   const ptyProc = pty.spawn(shell, [], {
     name: 'xterm-256color',
     cols: 80,
@@ -273,3 +279,15 @@ ipcMain.handle('resource:read', async (_, filename) => {
     return null
   }
 })
+
+// ── IPC: Fast Terminal Paste (Main reads clipboard, sends text to renderer) ──
+ipcMain.on('terminal-paste', (event, { tabId }) => {
+  const text = clipboard.readText()
+  if (text) {
+    const win = BrowserWindow.fromWebContents(event.sender)
+    if (win) win.webContents.send(`paste-content:${tabId}`, text)
+  }
+})
+
+// ── IPC: Clipboard Write (for Copy) ──────────────────────────────────────────
+ipcMain.handle('clipboard:write', (_, text) => clipboard.writeText(text, 'clipboard'))

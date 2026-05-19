@@ -558,31 +558,38 @@ document.addEventListener('DOMContentLoaded', () => {
     })
     terminal.onData((data) => window.api.writePty(id, data))
 
-    // Paste komplett selbst steuern:
-    // 1. pane-Capture stoppt das paste-Event bevor es xterm's textarea erreicht
-    // 2. Ctrl+V in attachCustomKeyEventHandler liest Clipboard und schreibt via writePty
-    // So gibt es exakt einen Pfad für Paste.
-    pane.addEventListener('paste', (e) => {
-      e.stopPropagation()
-      e.preventDefault()
-    }, true)
-
+    // Ctrl+V → Main reads clipboard, sends text back → bracketed paste
+    // Ctrl+C with selection → copy to clipboard
     terminal.attachCustomKeyEventHandler((e) => {
       if (e.type !== 'keydown') return true
       if (e.ctrlKey && e.key === 'c' && terminal.hasSelection()) {
-        navigator.clipboard.writeText(terminal.getSelection())
+        window.api.writeClipboard(terminal.getSelection())
         return false
       }
       if (e.ctrlKey && e.key === 'v') {
-        navigator.clipboard.readText().then(text => {
-          if (text) window.api.writePty(id, text)
-        })
+        window.api.triggerPaste(id)
         return false
       }
       return true
     })
 
-    const tabObj = { id, name, displayName: name, cwd, dirId, terminal, fitAddon, unsubData, unsubExit, status: 'stopped' }
+    // Always block native paste event on xterm's hidden textarea to prevent double-paste
+    // Our Ctrl+V handler above triggers IPC paste instead
+    setTimeout(() => {
+      const textarea = terminal.element?.querySelector('textarea')
+      if (textarea) {
+        textarea.addEventListener('paste', (e) => {
+          e.preventDefault()
+          e.stopPropagation()
+        }, { capture: true })
+      }
+    }, 50)
+
+    const unsubPaste = window.api.onPasteComplete(id, (text) => {
+      terminal.input('\x1b[200~' + text + '\x1b[201~')
+    })
+
+    const tabObj = { id, name, displayName: name, cwd, dirId, terminal, fitAddon, unsubData, unsubExit, unsubPaste, status: 'stopped' }
     tabs.push(tabObj)
     renderTabBar()
 
@@ -770,6 +777,7 @@ document.addEventListener('DOMContentLoaded', () => {
     } else {
       try { tab.unsubData() } catch (e) {}
       try { tab.unsubExit() } catch (e) {}
+      try { tab.unsubPaste() } catch (e) {}
       try { await window.api.killPty(id) } catch (e) {}
       try { tab.terminal.dispose() } catch (e) {}
       document.getElementById(`pane-${id}`)?.remove()
