@@ -36,6 +36,43 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('btn-add-tab').addEventListener('click', () => openFolderDialog())
   document.getElementById('btn-add-directory').addEventListener('click', () => openFolderDialog())
 
+  // ── Drag & Drop on Dashboard ───────────────────────────────────────────────
+  const dashboardEl = document.getElementById('dashboard')
+  const dropOverlay  = document.getElementById('drop-overlay')
+  let dragCounter = 0
+
+  document.addEventListener('dragenter', (e) => {
+    if (!dashboardEl.classList.contains('active')) return
+    e.preventDefault()
+    dragCounter++
+    dropOverlay.classList.remove('hidden')
+  })
+
+  document.addEventListener('dragover', (e) => {
+    if (!dashboardEl.classList.contains('active')) return
+    e.preventDefault()
+  })
+
+  document.addEventListener('dragleave', (e) => {
+    if (!dashboardEl.classList.contains('active')) return
+    e.preventDefault()
+    dragCounter--
+    if (dragCounter === 0) dropOverlay.classList.add('hidden')
+  })
+
+  document.addEventListener('drop', (e) => {
+    if (!dashboardEl.classList.contains('active')) return
+    e.preventDefault()
+    dragCounter = 0
+    dropOverlay.classList.add('hidden')
+
+    const file = e.dataTransfer.files[0]
+    if (!file) return
+    const folderPath = file.path
+    const defaultName = folderPath.split(/[\\/]/).pop() || folderPath
+    showSaveDialog(folderPath, defaultName)
+  })
+
   // ── Modelle Label ──────────────────────────────────────────────────────────
   function updateModelsLabel(isoString) {
     const el = document.getElementById('models-last-loaded')
@@ -53,12 +90,22 @@ document.addEventListener('DOMContentLoaded', () => {
 
   async function init() {
     try {
-      const config = await window.api.loadConfig()
-      savedDirectories = (config.directories || []).map(d => {
+      let config = await window.api.loadConfig()
+      let dirs = (config.directories || []).map(d => {
         if (!d._id) d._id = ++dirIdCounter
         else dirIdCounter = Math.max(dirIdCounter, d._id)
         return d
       })
+
+      const exists = await window.api.checkDirectories(dirs.map(d => d.path))
+      const removed = dirs.filter((_, i) => !exists[i])
+      dirs = dirs.filter((_, i) => exists[i])
+      if (removed.length > 0) {
+        config.directories = dirs
+        await window.api.saveConfig(config)
+      }
+
+      savedDirectories = dirs
       savedTabOrder    = config.tabOrder    || []
       defaultTab       = config.defaultTab  || 'home'
 

@@ -293,3 +293,8 @@ ipcMain.on('terminal-paste', (event, { tabId }) => {
 
 // ── IPC: Clipboard Write (for Copy) ──────────────────────────────────────────
 ipcMain.handle('clipboard:write', (_, text) => clipboard.writeText(text, 'clipboard'))
+
+// ── IPC: Check which directories still exist ────────────────────────────────
+ipcMain.handle('fs:checkDirs', async (_, paths) => {
+  return paths.map(p => fs.existsSync(p))
+})

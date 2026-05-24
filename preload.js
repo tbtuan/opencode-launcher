@@ -62,4 +62,5 @@ contextBridge.exposeInMainWorld('api', {
     return () => ipcRenderer.removeListener(channel, handler)
   },
   writeClipboard: (text) => ipcRenderer.invoke('clipboard:write', text),
+  checkDirectories: (paths) => ipcRenderer.invoke('fs:checkDirs', paths),
 })

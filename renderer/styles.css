@@ -556,6 +556,27 @@ body { display: flex; flex-direction: column; }
 }
 
 
+/* ── Drop Overlay ──────────────────────────────────────────────────────────── */
+#drop-overlay {
+  position: absolute; inset: 0;
+  background: rgba(0,0,0,0.55);
+  border: 3px dashed var(--accent);
+  border-radius: 12px;
+  display: flex; align-items: center; justify-content: center;
+  z-index: 100;
+  pointer-events: none;
+}
+#drop-overlay.hidden { display: none; }
+#drop-overlay-content {
+  font-size: 22px;
+  color: var(--accent);
+  background: rgba(0,0,0,0.65);
+  padding: 16px 36px;
+  border-radius: 10px;
+  font-weight: 500;
+  letter-spacing: 0.5px;
+}
+
 
 /* ── Settings Dialog ───────────────────────────────────────────────────────── */
 #settings-dialog-overlay {
