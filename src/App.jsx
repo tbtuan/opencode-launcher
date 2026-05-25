@@ -180,8 +180,12 @@ function AppInner() {
         updateTab(id, { status: 'running', isProcessing: () => true })
         recalcDisplayNames(cwd)
         document.dispatchEvent(new CustomEvent('resize-active-tab'))
+        logger.info('App', 'Create terminal OK', { id, name, cwd, dirId })
+      } else {
+        logger.warn('App', 'Create terminal failed', { id, name, cwd, result })
       }
     } catch (e) {
+      logger.error('App', 'Create terminal error', { id, name, cwd, error: e?.message })
       updateTab(id, { status: 'error' })
     }
 
@@ -203,6 +207,7 @@ function AppInner() {
     ].filter(Boolean).join(' ')
     try {
       const id = await createTab(dir.name, dir.path, args, dir._id)
+      logger.info('App', 'Open terminal for dir', { dirId: dir._id, name: dir.name, tabId: id })
       setActiveTab(id)
     } finally {
       creatingDirsRef.current.delete(dir._id)
@@ -232,6 +237,7 @@ function AppInner() {
         }
         removeTab(id)
         recalcDisplayNames(closedCwd)
+        logger.info('App', 'Close tab', { id, name: tab.name })
       }
 
       if (state.activeId === id) {
@@ -265,6 +271,7 @@ function AppInner() {
       isDirty: false,
     }
     addTab(splitTab)
+    logger.info('App', 'Split terminal', { parentId: tab.id, splitId, name: tab.name })
     setTimeout(() => {
       document.dispatchEvent(new CustomEvent('resize-active-tab'))
     }, 0)
@@ -282,6 +289,7 @@ function AppInner() {
   // Restart terminal
   const restartTerminal = useCallback(async (dir, tab) => {
     if (!tab) return
+    logger.info('App', 'Restart terminal', { tabId: tab.id, dirId: dir?._id, name: tab.name })
     const idx = state.tabs.indexOf(tab)
     const wasActive = tab.id === state.activeId
     await closeTab(tab.id)
@@ -323,6 +331,7 @@ function AppInner() {
 
   // Keyboard shortcuts
   const handleNewTerminal = useCallback(() => {
+    logger.info('App', 'New terminal (add-directory)')
     document.dispatchEvent(new CustomEvent('add-directory'))
   }, [])
 
@@ -361,6 +370,7 @@ function AppInner() {
     const tab = state.tabs.find(t => t.id === id)
     if (!tab) return
     if (hasSplits) {
+      logger.info('App', 'Close split terminals', { parentId: id, name: tab.name, count: childSplits.length })
       const childSplits = state.tabs.filter(t => t.parentId === id)
       for (const s of childSplits) {
         killPty(s.id)
@@ -383,6 +393,7 @@ function AppInner() {
         }
       }, 0)
     } else {
+      logger.info('App', 'Open split terminal', { parentId: id, name: tab.name })
       handleSplitTerminal(tab)
     }
   }, [contextMenu.targetId, contextMenu.hasSplits, state.tabs, handleContextClose, handleSplitTerminal, killPty, clearTerminalDimensions, removeTab, getTerminalDimensions])
@@ -412,6 +423,7 @@ function AppInner() {
     if (!id) return
     const tab = state.tabs.find(t => t.id === id)
     if (!tab) return
+    logger.info('App', 'Context restart', { id, name: tab.name })
     const dir = state.savedDirectories.find(d => d._id === tab.dirId)
     if (dir) {
       await restartTerminal(dir, tab)
@@ -427,11 +439,13 @@ function AppInner() {
   const handleCtxCloseTab = useCallback(() => {
     const id = contextMenu.targetId
     handleContextClose()
+    logger.info('App', 'Context close tab', { id })
     if (id) closeTab(id)
   }, [contextMenu.targetId, handleContextClose, closeTab])
 
   const handleCtxSave = useCallback(() => {
     handleContextClose()
+    logger.info('App', 'Context save editor')
     document.dispatchEvent(new CustomEvent('save-editor'))
   }, [handleContextClose])
 
@@ -439,6 +453,7 @@ function AppInner() {
     const id = Number(contextMenu.targetId)
     handleContextClose()
     if (!id) return
+    logger.info('App', 'Delete directory card', { dirId: id })
     removeDirectory(id)
     const tab = state.tabs.find(t => t.dirId === id)
     if (tab) closeTab(tab.id)
@@ -465,6 +480,7 @@ function AppInner() {
   // Save dialog result
   const handleSaveDialogResult = useCallback(async (e) => {
     const { action, name, folderPath, description, startOnLaunch, continueSession, model } = e.detail
+    logger.info('App', 'Save dialog result', { action, name, folderPath })
     if (action === 'saveAndOpen') {
       const newId = generateId()
       addDirectory({ _id: newId, name, path: folderPath, description, startOnLaunch, continueSession, model })
@@ -512,6 +528,7 @@ function AppInner() {
       addTab(tab)
       setEditorTab(id)
       setActiveTab(id)
+      logger.info('App', 'Open config editor', { tabId: id, filePath: result.filePath })
     }
     document.addEventListener('open-config-editor', handler)
     return () => document.removeEventListener('open-config-editor', handler)
@@ -571,6 +588,7 @@ function AppInner() {
   const editorTabRefs = useRef({})
 
   const handleProcessingChange = useCallback((tabId, isProcessing, isStarting) => {
+    logger.debug('App', 'Processing changed', { tabId, isProcessing, isStarting })
     updateTab(tabId, {
       isProcessing: () => isProcessing,
       status: 'running',
@@ -579,11 +597,13 @@ function AppInner() {
 
   const handleStatusChange = useCallback((tabId, status) => {
     updateTab(tabId, { status })
+    logger.info('App', 'Status changed', { tabId, status })
     const tab = state.tabs.find(t => t.id === tabId)
     if (tab) recalcDisplayNames(tab.cwd)
   }, [state.tabs, updateTab, recalcDisplayNames])
 
   const handleDirtyChange = useCallback((tabId, dirty) => {
+    logger.debug('App', 'Dirty change', { tabId, dirty })
     updateTab(tabId, { isDirty: dirty })
   }, [updateTab])
 
@@ -593,6 +613,9 @@ function AppInner() {
     const result = await api.writeOpencodeConfig(value, tab.filePath)
     if (result?.ok) {
       updateTab(tabId, { isDirty: false, content: value })
+      logger.info('App', 'Editor save OK', { tabId, filePath: tab.filePath })
+    } else {
+      logger.warn('App', 'Editor save failed', { tabId })
     }
   }, [state.tabs, updateTab])
 
@@ -606,6 +629,7 @@ function AppInner() {
     }
     persist(state.savedDirectories, selectedTab, selectedLang)
     setShowSettings(false)
+    logger.info('App', 'Save settings', { defaultTab: selectedTab, language: selectedLang, langChanged })
     if (langChanged) {
       setNextLang(selectedLang)
       setShowRestart(true)
@@ -615,6 +639,7 @@ function AppInner() {
   }, [state.savedDirectories, setDefaultTab, setAppLang, persist])
 
   const handleSettingsCancel = useCallback(() => {
+    logger.info('App', 'Cancel settings')
     setShowSettings(false)
   }, [])
 

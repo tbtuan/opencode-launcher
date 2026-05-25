@@ -3,6 +3,7 @@ import styles from './SaveDialog.module.css'
 import { t } from '../../i18n'
 import { useApp } from '../../store/AppContext'
 import { ModelSelector } from '../Dashboard/DirectoryCard/ModelSelector'
+import { logger } from '../../services/logger'
 
 export function SaveDialog({ folderPath, defaultName, onSaveAndOpen, onSaveOnly, onOpenOnly, onCancel }) {
   const { state } = useApp()
@@ -27,9 +28,20 @@ export function SaveDialog({ folderPath, defaultName, onSaveAndOpen, onSaveOnly,
     model: selectedModel,
   }), [name, defaultName, description, startOnLaunch, continueSession, selectedModel])
 
-  const handleSaveAndOpen = useCallback(() => onSaveAndOpen?.(getData()), [getData, onSaveAndOpen])
-  const handleSaveOnly = useCallback(() => onSaveOnly?.(getData()), [getData, onSaveOnly])
-  const handleOpenOnly = useCallback(() => onOpenOnly?.(), [onOpenOnly])
+  const handleSaveAndOpen = useCallback(() => {
+    const data = getData()
+    logger.info('SaveDialog', 'Save and open', { name: data.name })
+    onSaveAndOpen?.(data)
+  }, [getData, onSaveAndOpen])
+  const handleSaveOnly = useCallback(() => {
+    const data = getData()
+    logger.info('SaveDialog', 'Save only', { name: data.name })
+    onSaveOnly?.(data)
+  }, [getData, onSaveOnly])
+  const handleOpenOnly = useCallback(() => {
+    logger.info('SaveDialog', 'Open only', { name: name.trim() || defaultName })
+    onOpenOnly?.()
+  }, [onOpenOnly, name, defaultName])
 
   const handleKeyDown = useCallback((e) => {
     if (e.key === 'Enter') handleSaveAndOpen()

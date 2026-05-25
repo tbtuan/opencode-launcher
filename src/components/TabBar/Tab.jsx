@@ -3,6 +3,7 @@ import { cn } from '../../utils/cn'
 import styles from './Tab.module.css'
 import { t } from '../../i18n'
 import { useApp } from '../../store/AppContext'
+import { logger } from '../../services/logger'
 
 export function Tab({ id, tab, isHome, label, isActive, onActivate, onClose, onContextMenu, index, totalTabs, hasSplits }) {
   const { state } = useApp()
@@ -37,6 +38,7 @@ export function Tab({ id, tab, isHome, label, isActive, onActivate, onClose, onC
 
   const handleClose = useCallback((e) => {
     e.stopPropagation()
+    logger.info('Tab', 'Close tab', { id })
     onClose?.(id)
   }, [id, onClose])
 
@@ -53,9 +55,10 @@ export function Tab({ id, tab, isHome, label, isActive, onActivate, onClose, onC
   const handleRenameCommit = useCallback(() => {
     setIsRenaming(false)
     if (tab && renameValue.trim()) {
+      logger.info('Tab', 'Rename tab', { id, from: tab.name, to: renameValue.trim() })
       tab.name = renameValue.trim()
     }
-  }, [tab, renameValue])
+  }, [tab, renameValue, id])
 
   const handleRenameKeyDown = useCallback((e) => {
     if (e.key === 'Enter') { e.preventDefault(); inputRef.current?.blur() }
@@ -108,8 +111,8 @@ export function Tab({ id, tab, isHome, label, isActive, onActivate, onClose, onC
     setIsDragOver(false)
     const dragId = e.dataTransfer.getData('text/plain')
     if (!dragId || dragId === id) return
+    logger.info('Tab', 'Tab drag drop', { fromId: dragId, toId: id })
     const fromIdx = totalTabs !== undefined ? tab?.id === dragId ? index : -1 : -1
-    // The TabBar handles the actual reorder - we just signal
     document.dispatchEvent(new CustomEvent('tab-drop', { detail: { fromId: dragId, toId: id } }))
   }, [id, index, totalTabs, tab])
 

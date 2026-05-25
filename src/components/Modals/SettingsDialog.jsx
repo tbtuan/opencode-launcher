@@ -1,12 +1,14 @@
 import { useState, useCallback } from 'react'
 import styles from './SettingsDialog.module.css'
 import { t, getLanguage, setLanguage } from '../../i18n'
+import { logger } from '../../services/logger'
 
 export function SettingsDialog({ directories, defaultTab, flagDe, flagEn, onSave, onCancel }) {
   const [selectedTab, setSelectedTab] = useState(defaultTab)
   const [selectedLang, setSelectedLang] = useState(getLanguage())
 
   const handleSave = useCallback(() => {
+    logger.info('SettingsDialog', 'Save settings', { defaultTab: selectedTab, language: selectedLang })
     onSave?.(selectedTab, selectedLang)
   }, [selectedTab, selectedLang, onSave])
 

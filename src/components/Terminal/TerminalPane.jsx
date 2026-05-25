@@ -45,7 +45,10 @@ function SplitPane({ tab, parentTab, onSplitClose }) {
 
     const unsubKey = term.onKey(() => suppressIndicator(300))
     const timeout = setTimeout(() => {
-      term.element?.addEventListener('wheel', () => suppressIndicator(500), { passive: true })
+      const el = term.element
+      if (!el) return
+      el.addEventListener('wheel', () => suppressIndicator(500), { passive: true })
+      el.addEventListener('mousemove', () => suppressIndicator(500), { passive: true })
     }, 50)
     const unsubData = term.onData((data) => {
       handleUserInput(data)
@@ -214,7 +217,10 @@ export function TerminalPane({ tab, isActive, onProcessingChange, onStatusChange
     const unsubKey = term.onKey(() => suppressIndicator(300))
 
     const timeout = setTimeout(() => {
-      term.element?.addEventListener('wheel', () => suppressIndicator(500), { passive: true })
+      const el = term.element
+      if (!el) return
+      el.addEventListener('wheel', () => suppressIndicator(500), { passive: true })
+      el.addEventListener('mousemove', () => suppressIndicator(500), { passive: true })
     }, 50)
 
     const unsubData = term.onData((data) => {
@@ -362,6 +368,7 @@ export function TerminalPane({ tab, isActive, onProcessingChange, onStatusChange
   splitRatioRef.current = splitRatio
 
   const handleSplitClose = useCallback((splitId) => {
+    logger.info('TerminalPane', 'Split close', { splitId })
     killPty(splitId)
     clearTerminalDimensions(splitId)
     removeTab(splitId)

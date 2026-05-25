@@ -28,6 +28,7 @@ export function ActionsMenu() {
   }, [close])
 
   const handleReload = useCallback(async () => {
+    logger.info('ActionsMenu', 'Reload models')
     setIsLoadingModels(true)
     try {
       const result = await refreshModels()
@@ -39,20 +40,24 @@ export function ActionsMenu() {
   }, [setModels])
 
   const handleEditConfig = useCallback(() => {
+    logger.info('ActionsMenu', 'Open config editor')
     document.dispatchEvent(new CustomEvent('open-config-editor'))
   }, [])
 
   const handleRestart = useCallback(async () => {
+    logger.info('ActionsMenu', 'Restart launcher')
     try {
       await api.restartApp()
     } catch (e) {}
   }, [])
 
   const handleSettings = useCallback(() => {
+    logger.info('ActionsMenu', 'Open settings')
     document.dispatchEvent(new CustomEvent('open-settings'))
   }, [])
 
   const handleDevTools = useCallback(async () => {
+    logger.info('ActionsMenu', 'Open dev tools')
     try {
       await api.openDevTools()
     } catch (e) {}

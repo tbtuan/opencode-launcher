@@ -1,4 +1,5 @@
 import { useEffect } from 'react'
+import { logger } from '../services/logger'
 
 export function useKeyboardShortcuts({
   onNewTerminal,
@@ -14,6 +15,7 @@ export function useKeyboardShortcuts({
       if ((e.ctrlKey || e.metaKey) && e.key === 's') {
         e.preventDefault()
         if (editorTabId) {
+          logger.info('KB', 'Save editor')
           onSaveEditor?.()
         }
         return
@@ -21,6 +23,7 @@ export function useKeyboardShortcuts({
 
       if (e.ctrlKey && e.key === 't') {
         e.preventDefault()
+        logger.info('KB', 'New terminal')
         onNewTerminal?.()
         return
       }
@@ -28,6 +31,7 @@ export function useKeyboardShortcuts({
       if (e.ctrlKey && e.key === 'w') {
         e.preventDefault()
         if (activeId !== 'home') {
+          logger.info('KB', 'Close tab', { id: activeId })
           onCloseTab?.(activeId)
         }
         return
@@ -41,6 +45,7 @@ export function useKeyboardShortcuts({
         const next = e.shiftKey
           ? allIds[(idx - 1 + allIds.length) % allIds.length]
           : allIds[(idx + 1) % allIds.length]
+        logger.info('KB', 'Cycle tab', { direction: e.shiftKey ? 'prev' : 'next', target: next })
         onCycleTab?.(next)
         return
       }

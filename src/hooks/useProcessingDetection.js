@@ -19,18 +19,32 @@ export function useProcessingDetection({ terminalRef, onProcessingChange, tabId 
   const isProcessingRef = useRef(false)
   const isOpenCodeStartingRef = useRef(false)
   const recentInputSizeRef = useRef(0)
+  const lastReportedProcessingRef = useRef(null)
+
+  const setIdleRef = useRef(null)
 
   const setProcessing = useCallback(() => {
     isProcessingRef.current = true
     clearTimeout(writeIdleTimeoutRef.current)
-    onProcessingChange?.(true, isOpenCodeStartingRef.current)
+    if (lastReportedProcessingRef.current !== true) {
+      lastReportedProcessingRef.current = true
+      onProcessingChange?.(true, isOpenCodeStartingRef.current)
+    }
   }, [onProcessingChange])
 
   const setIdle = useCallback(() => {
-    if (isOpenCodeStartingRef.current) return
+    writeIdleTimeoutRef.current = null
+    if (isOpenCodeStartingRef.current) {
+      writeIdleTimeoutRef.current = setTimeout(() => setIdleRef.current(), IDLE_DEBOUNCE_MS)
+      return
+    }
     isProcessingRef.current = false
-    onProcessingChange?.(false, false)
+    if (lastReportedProcessingRef.current !== false) {
+      lastReportedProcessingRef.current = false
+      onProcessingChange?.(false, false)
+    }
   }, [onProcessingChange])
+  setIdleRef.current = setIdle
 
   const suppressIndicator = useCallback((ms = 300) => {
     isUserActionRef.current = true
@@ -43,9 +57,17 @@ export function useProcessingDetection({ terminalRef, onProcessingChange, tabId 
   const handlePtyData = useCallback((data) => {
     if (isOpenCodeStartingRef.current) {
       setProcessing()
+      clearTimeout(writeIdleTimeoutRef.current)
+      writeIdleTimeoutRef.current = setTimeout(() => setIdle(), IDLE_DEBOUNCE_MS)
       return
     }
-    if (!isUserActionRef.current && (data.length > 100 || data.length > recentInputSizeRef.current * 1.5)) {
+    if (isUserActionRef.current) {
+      if (!writeIdleTimeoutRef.current) {
+        writeIdleTimeoutRef.current = setTimeout(() => setIdle(), IDLE_DEBOUNCE_MS)
+      }
+      return
+    }
+    if (data.length > 100 || data.length > recentInputSizeRef.current * 1.5) {
       setProcessing()
     }
     clearTimeout(writeIdleTimeoutRef.current)

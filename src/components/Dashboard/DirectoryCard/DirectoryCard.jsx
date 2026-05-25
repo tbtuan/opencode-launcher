@@ -6,6 +6,7 @@ import { ModelSelector } from './ModelSelector'
 import { CardEditor } from './CardEditor'
 import { useApp } from '../../../store/AppContext'
 import { t } from '../../../i18n'
+import { logger } from '../../../services/logger'
 
 export function DirectoryCard({ dir, onOpenTerminal, onCloseTab, onRestartTerminal, onContextMenu }) {
   const { state, updateDirectory } = useApp()
@@ -19,34 +20,41 @@ export function DirectoryCard({ dir, onOpenTerminal, onCloseTab, onRestartTermin
 
   const handlePlay = useCallback((e) => {
     e.stopPropagation()
+    logger.info('DirectoryCard', 'Play terminal', { dirId: dir._id, name: dir.name })
     onOpenTerminal?.(dir)
   }, [dir, onOpenTerminal])
 
   const handleStop = useCallback((e) => {
     e.stopPropagation()
+    logger.info('DirectoryCard', 'Stop terminal', { dirId: dir._id, name: dir.name, tabId: tab?.id })
     if (tab) onCloseTab?.(tab.id)
-  }, [tab, onCloseTab])
+  }, [dir, tab, onCloseTab])
 
   const handleRestart = useCallback((e) => {
     e.stopPropagation()
+    logger.info('DirectoryCard', 'Restart terminal', { dirId: dir._id, name: dir.name })
     onRestartTerminal?.(dir, tab)
   }, [dir, tab, onRestartTerminal])
 
   const handleSettings = useCallback((e) => {
     e.stopPropagation()
+    logger.info('DirectoryCard', 'Open card editor', { dirId: dir._id, name: dir.name })
     setIsEditing(true)
-  }, [])
+  }, [dir])
 
   const handleEditorSave = useCallback((data) => {
+    logger.info('DirectoryCard', 'Save card editor', { dirId: dir._id, ...data })
     updateDirectory(dir._id, data)
     setIsEditing(false)
   }, [dir._id, updateDirectory])
 
   const handleEditorCancel = useCallback(() => {
+    logger.info('DirectoryCard', 'Cancel card editor', { dirId: dir._id })
     setIsEditing(false)
-  }, [])
+  }, [dir._id])
 
   const handleModelSelect = useCallback((model) => {
+    logger.info('DirectoryCard', 'Select model', { dirId: dir._id, model })
     updateDirectory(dir._id, { model })
   }, [dir._id, updateDirectory])
 

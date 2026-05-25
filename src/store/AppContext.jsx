@@ -2,6 +2,7 @@ import { createContext, useContext, useReducer, useCallback, useEffect } from 'r
 import { appReducer, initialState } from './appReducer'
 import { persistConfig } from '../services/configService'
 import { getLanguage, setLanguage } from '../i18n'
+import { logger } from '../services/logger'
 
 const AppContext = createContext(null)
 
@@ -13,18 +14,22 @@ export function AppProvider({ children }) {
   }, [])
 
   const setActiveTab = useCallback((id) => {
+    logger.info('AppContext', 'Set active tab', { id })
     dispatch({ type: 'SET_ACTIVE_TAB', payload: id })
   }, [])
 
   const addTab = useCallback((tab) => {
+    logger.info('AppContext', 'Add tab', { id: tab.id, name: tab.name, type: tab.type })
     dispatch({ type: 'ADD_TAB', payload: tab })
   }, [])
 
   const insertTab = useCallback((tab, index) => {
+    logger.info('AppContext', 'Insert tab', { id: tab.id, name: tab.name, index })
     dispatch({ type: 'INSERT_TAB', payload: tab, index })
   }, [])
 
   const removeTab = useCallback((id) => {
+    logger.info('AppContext', 'Remove tab', { id })
     dispatch({ type: 'REMOVE_TAB', payload: id })
   }, [])
 
@@ -33,6 +38,7 @@ export function AppProvider({ children }) {
   }, [])
 
   const moveTab = useCallback((fromIdx, toIdx) => {
+    logger.info('AppContext', 'Move tab', { fromIdx, toIdx })
     dispatch({ type: 'MOVE_TAB', payload: { fromIdx, toIdx } })
   }, [])
 
@@ -41,17 +47,20 @@ export function AppProvider({ children }) {
   }, [])
 
   const addDirectory = useCallback((dir) => {
+    logger.info('AppContext', 'Add directory', { id: dir._id, name: dir.name, path: dir.path })
     dispatch({ type: 'ADD_DIRECTORY', payload: dir })
     persist([...state.savedDirectories, dir], state.defaultTab, state.language)
   }, [state.savedDirectories, state.defaultTab, state.language, persist])
 
   const removeDirectory = useCallback((id) => {
+    logger.info('AppContext', 'Remove directory', { id })
     dispatch({ type: 'REMOVE_DIRECTORY', payload: id })
     const newDirs = state.savedDirectories.filter(d => d._id !== id)
     persist(newDirs, state.defaultTab, state.language)
   }, [state.savedDirectories, state.defaultTab, state.language, persist])
 
   const updateDirectory = useCallback((id, updates) => {
+    logger.info('AppContext', 'Update directory', { id, ...updates })
     dispatch({ type: 'UPDATE_DIRECTORY', payload: { _id: id, updates } })
     const newDirs = state.savedDirectories.map(d =>
       d._id === id ? { ...d, ...updates } : d
@@ -60,6 +69,7 @@ export function AppProvider({ children }) {
   }, [state.savedDirectories, state.defaultTab, state.language, persist])
 
   const moveDirectory = useCallback((fromIdx, toIdx) => {
+    logger.info('AppContext', 'Move directory', { fromIdx, toIdx })
     dispatch({ type: 'MOVE_DIRECTORY', payload: { fromDirIdx: fromIdx, toDirIdx: toIdx } })
     const newDirs = [...state.savedDirectories]
     const [moved] = newDirs.splice(fromIdx, 1)
