@@ -1,0 +1,35 @@
+.contextMenu {
+  position: fixed;
+  z-index: 9999;
+  background: #252526;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 4px 0;
+  min-width: 160px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.5);
+}
+
+.contextMenu.hidden { display: none; }
+
+.contextMenu button {
+  display: block;
+  width: 100%;
+  padding: 7px 14px;
+  border: none;
+  background: transparent;
+  color: var(--text);
+  font-size: 12px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.contextMenu button:hover { background: rgba(255,255,255,0.08); }
+
+.danger { color: var(--danger); }
+.danger:hover { background: rgba(244,71,71,0.15) !important; }
+
+.separator {
+  border: none;
+  border-top: 1px solid var(--border);
+  margin: 4px 0;
+}

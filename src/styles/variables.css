@@ -1,0 +1,18 @@
+:root {
+  --bg-base: #1e1e1e;
+  --bg-tab-bar: #2d2d2d;
+  --bg-tab: #3c3c3c;
+  --bg-tab-hover: #4a4a4a;
+  --bg-tab-active: #1e1e1e;
+  --accent: #007acc;
+  --accent-hover: #1e8ad6;
+  --text: #cccccc;
+  --text-dim: #888888;
+  --text-tab: #aaaaaa;
+  --text-tab-active: #ffffff;
+  --border: #404040;
+  --danger: #f44747;
+  --tabbar-h: 38px;
+  --card-bg: #252526;
+  --card-hover: #2d2d2d;
+}

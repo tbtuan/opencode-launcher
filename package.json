@@ -1,21 +1,33 @@
 {
   "name": "opencode-launcher",
   "version": "1.0.0",
-  "description": "Tab-based OpenCode launcher using Electron + xterm.js + node-pty",
+  "description": "Tab-based OpenCode launcher using Electron + React + Vite + xterm.js",
   "main": "main.js",
   "scripts": {
     "start": "electron .",
-    "rebuild": "electron-rebuild -f -w node-pty"
+    "dev": "vite",
+    "build": "vite build",
+    "rebuild": "npm run build && npm start",
+    "preview": "vite preview",
+    "rebuild-pty": "electron-rebuild -f -w node-pty"
   },
   "devDependencies": {
     "@electron/rebuild": "^3.6.0",
-    "electron": "^29.0.0"
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.2",
+    "@vitejs/plugin-react": "^4.2.1",
+    "electron": "^29.0.0",
+    "jsdom": "^28.1.0",
+    "vite": "^5.4.2",
+    "vitest": "^4.1.7"
   },
   "dependencies": {
     "@xterm/addon-clipboard": "^0.2.0",
     "@xterm/addon-fit": "^0.11.0",
     "@xterm/xterm": "^6.0.0",
     "codemirror": "^5.65.21",
-    "node-pty": "^1.0.0"
+    "node-pty": "^1.0.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
   }
 }

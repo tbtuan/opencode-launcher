@@ -1,0 +1,40 @@
+.tabBar {
+  flex: 0 0 var(--tabbar-h);
+  background: var(--bg-tab-bar);
+  display: flex;
+  align-items: stretch;
+  border-bottom: 1px solid var(--border);
+  overflow: visible;
+}
+
+.tabsContainer {
+  display: flex;
+  align-items: stretch;
+  overflow-x: auto;
+  overflow-y: hidden;
+  flex: 1;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+}
+
+.tabsContainer::-webkit-scrollbar { height: 3px; }
+.tabsContainer::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+.addTabBtn {
+  width: 36px;
+  border: none;
+  background: transparent;
+  color: var(--text-dim);
+  font-size: 22px;
+  cursor: pointer;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.12s, background 0.12s;
+}
+
+.addTabBtn:hover {
+  color: var(--text);
+  background: rgba(255,255,255,0.06);
+}

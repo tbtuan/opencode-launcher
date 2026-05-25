@@ -1,0 +1,91 @@
+@import './variables.css';
+@import '@xterm/xterm/css/xterm.css';
+@import 'codemirror/lib/codemirror.css';
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+.hidden { display: none !important; }
+
+html, body {
+  margin: 0; padding: 0;
+  width: 100%; height: 100%;
+  overflow: hidden;
+  background: var(--bg-base);
+  color: var(--text);
+  font-family: 'Segoe UI', system-ui, sans-serif;
+  font-size: 13px;
+  user-select: none;
+}
+
+body { display: flex; flex-direction: column; }
+
+#root {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+}
+
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #424242; border-radius: 4px; }
+
+@keyframes preview-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.2; }
+}
+
+/* ── Terminal pane ────────────────────────────────────────────────────── */
+.terminal-pane { padding: 2px; }
+.terminal-pane .xterm,
+.terminal-pane .xterm-viewport,
+.terminal-pane .xterm-screen {
+  width: 100% !important;
+  height: 100% !important;
+}
+
+/* ── Preview terminal sizing ─────────────────────────────────────────── */
+#preview-grid .xterm,
+#preview-grid .xterm-viewport,
+#preview-grid .xterm-screen {
+  width: 100% !important;
+  height: 100% !important;
+}
+
+/* ── CodeMirror Dark Theme ────────────────────────────────────────────── */
+.CodeMirror {
+  height: 100%;
+  font-family: 'Cascadia Code', 'Fira Code', 'Consolas', monospace;
+  font-size: 13px;
+  line-height: 1.5;
+  background: #1e1e1e;
+  color: #d4d4d4;
+}
+.CodeMirror-gutters {
+  background: #252526;
+  border-right: 1px solid #333;
+}
+.CodeMirror-linenumber {
+  color: #858585;
+  padding: 0 8px 0 4px;
+}
+.CodeMirror-cursor { border-left: 2px solid #aeafad; }
+.CodeMirror-selected { background: rgba(0,122,204,0.3); }
+.CodeMirror-activeline-background { background: rgba(255,255,255,0.04); }
+.cm-s-default .cm-keyword { color: #569cd6; }
+.cm-s-default .cm-string { color: #ce9178; }
+.cm-s-default .cm-number { color: #b5cea8; }
+.cm-s-default .cm-property { color: #9cdcfe; }
+.cm-s-default .cm-atom { color: #569cd6; }
+.cm-s-default .cm-def { color: #dcdcaa; }
+.cm-s-default .cm-operator { color: #d4d4d4; }
+.cm-s-default .cm-meta { color: #d4d4d4; }
+.cm-s-default .cm-bracket { color: #d4d4d4; }
+.cm-s-default .cm-comment { color: #6a9955; }
+.cm-s-default .cm-variable { color: #d4d4d4; }
+.cm-s-default .cm-variable-2 { color: #9cdcfe; }
+.cm-s-default .cm-tag { color: #569cd6; }
+.cm-s-default .cm-attribute { color: #9cdcfe; }
+.cm-s-default .cm-qualifier { color: #569cd6; }
+.cm-s-default .cm-builtin { color: #569cd6; }
+.cm-s-default .cm-error { color: #f44747; }

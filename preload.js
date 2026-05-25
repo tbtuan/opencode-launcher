@@ -36,6 +36,11 @@ contextBridge.exposeInMainWorld('api', {
 
   // App
   restartApp: () => ipcRenderer.invoke('app:restart'),
+  onBuildStatus: (cb) => {
+    const handler = (_, data) => cb(data)
+    ipcRenderer.on('build:status', handler)
+    return () => ipcRenderer.removeListener('build:status', handler)
+  },
 
   // i18n
   loadI18n: (lang) => ipcRenderer.invoke('i18n:load', lang),

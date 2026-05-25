@@ -2,7 +2,7 @@ const { app, BrowserWindow, ipcMain, clipboard, dialog, Menu } = require('electr
 const path = require('path')
 const fs = require('fs')
 const pty = require('node-pty')
-const { execSync } = require('child_process')
+const { execSync, exec } = require('child_process')
 
 let mainWindow
 const ptyProcesses = new Map() // tabId -> pty process
@@ -67,7 +67,7 @@ function createWindow() {
     }
   })
 
-  mainWindow.loadFile(path.join(__dirname, 'renderer', 'index.html'))
+  mainWindow.loadFile(path.join(__dirname, 'dist', 'index.html'))
 
   mainWindow.on('closed', () => {
     // Kill all PTY processes on close
@@ -213,7 +213,25 @@ ipcMain.handle('models:refresh', () => {
 })
 
 // ── IPC: Restart App ─────────────────────────────────────────────────────────
-ipcMain.handle('app:restart', () => {
+ipcMain.handle('app:restart', async (event) => {
+  const checkScript = path.join(__dirname, 'check-build.js')
+  if (fs.existsSync(checkScript)) {
+    try {
+      execSync(`node "${checkScript}"`, { cwd: __dirname, stdio: 'ignore' })
+    } catch {
+      event.sender.send('build:status', { status: 'building' })
+      await new Promise((resolve, reject) => {
+        exec('npm run build', { cwd: __dirname }, (err) => {
+          if (err) {
+            console.error('[restart] Build failed:', err.message)
+            reject(err)
+          } else {
+            resolve()
+          }
+        })
+      }).catch(() => {})
+    }
+  }
   app.relaunch()
   app.exit()
 })

@@ -1,0 +1,109 @@
+.tab {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 12px 0 14px;
+  min-width: 130px;
+  max-width: 220px;
+  height: 100%;
+  background: var(--bg-tab);
+  color: var(--text-tab);
+  cursor: pointer;
+  border-right: 1px solid var(--border);
+  flex-shrink: 0;
+  transition: background 0.12s;
+}
+
+.tab:hover { background: var(--bg-tab-hover); color: var(--text); }
+
+.tab.active {
+  background: var(--bg-tab-active);
+  color: var(--text-tab-active);
+  border-bottom: 2px solid var(--accent);
+}
+
+.tab.dragging { opacity: 0.4; cursor: grabbing; }
+.tab.dragOver { box-shadow: -2px 0 0 var(--accent); }
+
+.homeTab {
+  min-width: 42px;
+  max-width: 42px;
+  padding: 0;
+  border-right: 1px solid var(--border);
+  flex-shrink: 0;
+  justify-content: center;
+  gap: 0;
+}
+
+.homeIcon {
+  font-size: 22px;
+  line-height: 1;
+  display: block;
+  margin-top: -3px;
+}
+
+.editorIcon {
+  font-size: 13px;
+  line-height: 1;
+  flex-shrink: 0;
+  color: var(--text-dim);
+}
+
+.indicator {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  background: var(--text-dim);
+  transition: background 0.2s;
+}
+
+.indicatorRunning { background: #4ec9b0; }
+.indicatorStopped { background: var(--text-dim); }
+.indicatorError { background: var(--danger); }
+.indicatorActive {
+  background: #dcdcaa;
+  animation: pulse 1s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.2; }
+}
+
+.label {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12px;
+}
+
+.closeBtn {
+  width: 18px;
+  height: 18px;
+  border-radius: 3px;
+  border: none;
+  background: transparent;
+  color: var(--text-dim);
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.closeBtn:hover { background: rgba(255,255,255,0.1); color: var(--text); }
+
+.renameInput {
+  background: #3c3c3c;
+  border: 1px solid var(--accent);
+  border-radius: 3px;
+  color: var(--text);
+  font-size: 12px;
+  padding: 2px 4px;
+  width: 120px;
+  outline: none;
+}

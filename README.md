@@ -5,50 +5,81 @@ A tab-based Electron launcher for managing multiple OpenCode terminal sessions.
 ## Features
 
 ### Dashboard
-- **Directory Cards** – Saved directories are displayed as cards showing name, path, and optional description
+- **Directory Cards** – Saved directories displayed as cards with name, path, optional description, auto-launch badge, and per-directory model selector
 - **Drag & Drop Reordering** – Rearrange cards on the dashboard by dragging
-- **Inline Card Editor** – Edit name, description, auto-launch, and session continuation settings per card
-- **Live Status Indicators** – Play, Stop, and Restart buttons sync with running terminal state
-- **Preview Terminals** – Read-only mini previews of all running terminals shown directly below the cards; click to open full view
+- **Inline Card Editor** – Edit name, description, auto-launch, and session continuation settings per card without leaving the dashboard
+- **Model Selector** – Choose a preferred AI model per directory, grouped by provider (OpenCode, GitHub Copilot, LiteLLM)
+- **Live Status Buttons** – Play, Stop, and Restart buttons that sync with running terminal state
+- **Preview Terminals** – Read-only mini xterm.js previews of all running terminals shown below the cards; click any preview to activate the full terminal
+- **Drag & Drop Folders** – Drop folders from your file explorer directly onto the dashboard to add them
+- **Add Directory Dialog** – Browse and add project directories with three save modes: save & open, save only, or open only
 
 ### Terminal Management
-- **Multi-Tab Interface** – Open multiple terminal sessions in tabs
-- **Tab Drag & Drop** – Reorder tabs by dragging
-- **Tab Context Menu** – Right-click tabs to rename, change directory, restart, or close
+- **Multi-Tab Interface** – Open multiple terminal sessions in tabs with PTY-backed shell sessions
+- **Tab Drag & Drop** – Reorder tabs by dragging; tab order is persisted across restarts
+- **Tab Context Menu** – Right-click tabs to rename, change directory, restart the PTY session, or close
 - **Keyboard Shortcuts**
   - `Ctrl+T` – New terminal
   - `Ctrl+W` – Close current tab
-  - `Ctrl+Tab` / `Ctrl+Shift+Tab` – Cycle through tabs
-- **Copy & Paste** – `Ctrl+C` copies selection, `Ctrl+V` pastes clipboard content
-- **Auto-Resize** – Terminal and PTY automatically resize when the window changes
+  - `Ctrl+Tab` / `Ctrl+Shift+Tab` – Cycle through tabs (includes Home tab)
+  - `Ctrl+S` – Save editor tab (config file)
+  - `Escape` – Close dialogs, context menus
+- **Copy & Paste** – `Ctrl+C` copies terminal selection to clipboard; `Ctrl+V` pastes clipboard content into the terminal
+- **Auto-Resize** – Terminal and PTY automatically resize on window resize via `ResizeObserver`
+- **Processing Detection** – Terminal indicator shows processing state (green = idle, yellow = processing, red = error, gray = stopped)
+- **Display Name Deduplication** – Multiple terminals in the same directory are suffixed with `(1)`, `(2)`, etc.
+- **Error Handling** – PTY errors are shown inline in the terminal output
 
-### Model Management
-- **Per-Directory Model Selection** – Choose a preferred AI model for each directory
-- **Provider Grouping** – Models grouped by provider (OpenCode, GitHub Copilot, LiteLLM)
-- **Model Caching** – Models are cached with a timestamp to avoid slow reloads
-- **Manual Refresh** – Reload models on demand via the Actions menu
+### OpenCode Config Editor
+- **Integrated Editor** – Edit `opencode.json` directly in a tab using CodeMirror with JSON syntax highlighting, line numbers, bracket matching, and active line highlighting
+- **Dirty Tracking** – Unsaved changes shown with an asterisk (`*`) in the tab label
+- **JSON Validation** – Validates JSON before saving to prevent corrupt config files
+- **Save Shortcut** – `Ctrl+S` to save; also accessible via tab context menu
 
-### Startup & Configuration
-- **Auto-Launch** – Mark directories to automatically start on launcher open
-- **Default Startup Tab** – Choose which tab opens on startup (Home or any saved directory) via Settings
-- **Session Continuation** – Option to resume previous sessions with `--continue`
-- **Persistent Config** – All settings saved to `config.json`
+### Settings
+- **Default Startup Tab** – Choose between Home (dashboard) or any saved directory as the startup tab
+- **Language Selection** – Switch between German and English (flag icons); requires restart to take full effect
 
 ### Actions Menu
-- **Reload Models** – Refresh the available model list
-- **Restart Launcher** – Restart the application
-- **Settings** – Configure default startup tab
+- **Reload Models** – Refresh the available model list on demand
+- **Edit OpenCode Config** – Open the integrated config editor tab
+- **Restart Launcher** – Restart the application (with automatic rebuild check)
+- **Settings** – Open the settings dialog
 
-### Directory Management
-- **Add Directory** – Browse and add project directories
-- **Save Dialog** – Choose to save only, open only, or save & open when adding a directory
-- **Remove Card** – Right-click a card to remove it from the dashboard
+### Model Management
+- **Per-Directory Model Selection** – Assign a preferred AI model to each directory independently
+- **Provider Grouping** – Models grouped by provider (OpenCode, GitHub Copilot, LiteLLM)
+- **Model Caching** – Models cached with a timestamp in `config.json` to avoid slow CLI reloads on every startup
+- **Manual Refresh** – Force-refresh models via the Actions menu or reload button
+
+### Startup & Configuration
+- **Auto-Launch** – Mark directories to automatically start a terminal on launcher open
+- **Default Startup Tab** – Configure which tab (Home or a specific directory) opens on startup
+- **Session Continuation** – Option to pass `--continue` to OpenCode to resume previous sessions
+- **Tab Order Persistence** – Tab order is saved to `config.json` and restored on next launch
+- **Directory Validation** – On startup, checks which saved directories still exist and removes missing ones automatically
+- **Double-Open Prevention** – In-flight terminal creation per directory is tracked to prevent accidental duplicate tabs
+- **Persistent Config** – All settings saved to `config.json` with merge semantics (preserves unknown fields)
+
+### Build System
+- **Smart Build Check** – Timestamp-based Vite build check before launch (compares `dist/index.html` mtime against source files); skips rebuild when up-to-date
+- **Auto-Rebuild on Restart** – Restarting the launcher checks if a rebuild is needed and shows a spinner overlay during the build process
+- **Cross-Platform Start Scripts** – `start.bat` (Windows) and `start.sh` (Linux/macOS) both run the build check before launching
+
+### Multi-Language
+- **German & English** – Full UI translations for both languages
+- **Flag Icons** – Country flags displayed in the language selector
+- **Instant Switch** – Language change takes effect after restart
 
 ### Technical
-- **PTY-Based Terminals** – Uses `node-pty` for real shell sessions
+- **PTY-Based Terminals** – Uses `node-pty` for real shell sessions with xterm.js rendering
 - **Graceful Shutdown** – All PTY processes are killed on window close
-- **xterm.js v5** – Modern terminal rendering with FitAddon
-- **Auto-Hide Menu Bar** – Clean, distraction-free UI
+- **xterm.js v6** – Modern terminal rendering with fit addon, custom key handlers, and scroll suppression
+- **Dark Theme** – VS Code-inspired dark theme (`#1e1e1e` background)
+- **Auto-Hide Menu Bar** – Clean, distraction-free UI with application menu disabled
+- **Electron Context Isolation** – Secure IPC via preload bridge with `contextIsolation: true`
+- **Error Boundary** – React error boundary catches render errors without crashing the full app
+- **Config Merge** – Saves config with merge semantics (`{...existing, ...updates}`) to preserve unknown fields
 
 ## Requirements
 
