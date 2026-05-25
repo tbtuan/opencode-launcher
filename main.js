@@ -7,6 +7,7 @@ const { execSync, exec } = require('child_process')
 let mainWindow
 let devToolsWindow = null
 const ptyProcesses = new Map() // tabId -> pty process
+const iconPath = path.join(__dirname, 'public', 'icon.png')
 
 function mainLog(level, ...args) {
   try { console[level](`[main]`, ...args) } catch {}
@@ -70,6 +71,7 @@ function createWindow() {
     minHeight: 400,
     backgroundColor: '#1e1e1e',
     autoHideMenuBar: true,
+    icon: iconPath,
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
@@ -275,6 +277,7 @@ ipcMain.handle('app:openDevTools', () => {
     width: 1000,
     height: 750,
     title: 'OpenCode Launcher — Entwicklertools',
+    icon: iconPath,
     webPreferences: {
       preload: path.join(__dirname, 'preload-dev.js'),
       contextIsolation: true,
