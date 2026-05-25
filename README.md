@@ -1,6 +1,6 @@
 # OpenCode Launcher
 
-A tab-based Electron launcher for managing multiple OpenCode terminal sessions.
+A tab-based Electron launcher for managing multiple OpenCode terminal sessions, built with **React + Vite + CSS Modules**.
 
 ## Features
 
@@ -10,14 +10,16 @@ A tab-based Electron launcher for managing multiple OpenCode terminal sessions.
 - **Inline Card Editor** – Edit name, description, auto-launch, and session continuation settings per card without leaving the dashboard
 - **Model Selector** – Choose a preferred AI model per directory, grouped by provider (OpenCode, GitHub Copilot, LiteLLM)
 - **Live Status Buttons** – Play, Stop, and Restart buttons that sync with running terminal state
-- **Preview Terminals** – Read-only mini xterm.js previews of all running terminals shown below the cards; click any preview to activate the full terminal
+- **Preview Terminals** – Read-only mini xterm.js previews (font size 6) of all running terminals shown below the cards; fixed 280px height with FitAddon; click any preview to activate the full terminal
+- **Split Preview** – When a terminal has a split, the preview shows both terminals sharing the fixed height according to the split ratio
 - **Drag & Drop Folders** – Drop folders from your file explorer directly onto the dashboard to add them
 - **Add Directory Dialog** – Browse and add project directories with three save modes: save & open, save only, or open only
 
 ### Terminal Management
 - **Multi-Tab Interface** – Open multiple terminal sessions in tabs with PTY-backed shell sessions
+- **Split Terminal** – Right-click a tab to open a separate terminal pane side-by-side via a draggable divider; close via context menu or the split's close button
 - **Tab Drag & Drop** – Reorder tabs by dragging; tab order is persisted across restarts
-- **Tab Context Menu** – Right-click tabs to rename, change directory, restart the PTY session, or close
+- **Tab Context Menu** – Right-click tabs to restart, open/close separate terminal, or close
 - **Keyboard Shortcuts**
   - `Ctrl+T` – New terminal
   - `Ctrl+W` – Close current tab
@@ -25,7 +27,7 @@ A tab-based Electron launcher for managing multiple OpenCode terminal sessions.
   - `Ctrl+S` – Save editor tab (config file)
   - `Escape` – Close dialogs, context menus
 - **Copy & Paste** – `Ctrl+C` copies terminal selection to clipboard; `Ctrl+V` pastes clipboard content into the terminal
-- **Auto-Resize** – Terminal and PTY automatically resize on window resize via `ResizeObserver`
+- **Auto-Resize** – Terminal and PTY automatically resize on window resize, tab switch, or split close
 - **Processing Detection** – Terminal indicator shows processing state (green = idle, yellow = processing, red = error, gray = stopped)
 - **Display Name Deduplication** – Multiple terminals in the same directory are suffixed with `(1)`, `(2)`, etc.
 - **Error Handling** – PTY errors are shown inline in the terminal output
@@ -35,6 +37,11 @@ A tab-based Electron launcher for managing multiple OpenCode terminal sessions.
 - **Dirty Tracking** – Unsaved changes shown with an asterisk (`*`) in the tab label
 - **JSON Validation** – Validates JSON before saving to prevent corrupt config files
 - **Save Shortcut** – `Ctrl+S` to save; also accessible via tab context menu
+
+### Developer Tools
+- **Custom DevTool Window** – Separate Electron window with LogViewer: filterable, searchable log output from the BroadcastChannel-based logger
+- **Log Context Menu** – Right-click a log entry to copy its full formatted message
+- **Chrome DevTools** – Button to open the main window's Chrome DevTools in detached mode
 
 ### Settings
 - **Default Startup Tab** – Choose between Home (dashboard) or any saved directory as the startup tab
@@ -72,6 +79,9 @@ A tab-based Electron launcher for managing multiple OpenCode terminal sessions.
 - **Instant Switch** – Language change takes effect after restart
 
 ### Technical
+- **React 18 + Vite** – Modern frontend toolchain with HMR during development
+- **CSS Modules** – Component-scoped styling with global variables for theming
+- **Logger Service** – BroadcastChannel-based logger with 2000-entry ring buffer, subscribable from both main window and DevTool window
 - **PTY-Based Terminals** – Uses `node-pty` for real shell sessions with xterm.js rendering
 - **Graceful Shutdown** – All PTY processes are killed on window close
 - **xterm.js v6** – Modern terminal rendering with fit addon, custom key handlers, and scroll suppression
@@ -80,6 +90,7 @@ A tab-based Electron launcher for managing multiple OpenCode terminal sessions.
 - **Electron Context Isolation** – Secure IPC via preload bridge with `contextIsolation: true`
 - **Error Boundary** – React error boundary catches render errors without crashing the full app
 - **Config Merge** – Saves config with merge semantics (`{...existing, ...updates}`) to preserve unknown fields
+- **142 Tests** – Vitest with React Testing Library and jsdom environment
 
 ## Requirements
 
@@ -113,6 +124,11 @@ npm start
 ./start.sh
 # or
 npm start
+```
+
+### Development
+```bash
+npm run dev       # Start Vite dev server
 ```
 
 ## Configuration
