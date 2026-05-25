@@ -138,6 +138,7 @@ export function Dashboard({ onOpenTerminal, onCloseTab, onRestartTerminal }) {
           isProcessing: tab.isProcessing?.(),
           cols: dims?.cols || 80,
           rows: dims?.rows || 24,
+          splitRatio: tab.splitRatio || 0.5,
           splits,
         })
       }

@@ -45,11 +45,11 @@ body { display: flex; flex-direction: column; }
 }
 
 /* ── Preview terminal sizing ─────────────────────────────────────────── */
-#preview-grid .xterm,
-#preview-grid .xterm-viewport,
-#preview-grid .xterm-screen {
+#preview-grid .xterm {
   width: 100% !important;
-  height: 100% !important;
+}
+#preview-grid .xterm-viewport {
+  overflow-y: hidden !important;
 }
 
 /* ── CodeMirror Dark Theme ────────────────────────────────────────────── */

@@ -43,9 +43,6 @@ contextBridge.exposeInMainWorld('api', {
     return () => ipcRenderer.removeListener('build:status', handler)
   },
 
-  // i18n
-  loadI18n: (lang) => ipcRenderer.invoke('i18n:load', lang),
-
   // Resources
   readResource: (filename) => ipcRenderer.invoke('resource:read', filename),
 

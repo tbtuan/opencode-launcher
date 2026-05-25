@@ -3,7 +3,7 @@ import { Tab } from './Tab'
 import { ActionsMenu } from '../ActionsMenu/ActionsMenu'
 import { getLanguage, t } from '../../i18n'
 
-export function TabBar({ tabs, activeId, onActivate, onCloseTab, onAddTab, onContextMenu, onMoveTab }) {
+export function TabBar({ tabs, activeId, onActivate, onCloseTab, onAddTab, onContextMenu }) {
   return (
     <div className={styles.tabBar} id="tab-bar">
       <Tab
@@ -25,7 +25,6 @@ export function TabBar({ tabs, activeId, onActivate, onCloseTab, onAddTab, onCon
               onActivate={onActivate}
               onClose={onCloseTab}
               onContextMenu={onContextMenu}
-              onMoveTab={onMoveTab}
               index={idx}
               totalTabs={tabs.length}
               hasSplits={hasSplits}

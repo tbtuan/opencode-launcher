@@ -354,16 +354,6 @@ ipcMain.handle('config:opencode:write', (_, { content, filePath }) => {
   }
 })
 
-// ── IPC: Load i18n translations ──────────────────────────────────────────────
-ipcMain.handle('i18n:load', async (_, lang) => {
-  const filePath = path.join(__dirname, 'resources', `${lang}.json`)
-  try {
-    return JSON.parse(fs.readFileSync(filePath, 'utf-8'))
-  } catch (e) {
-    return null
-  }
-})
-
 // ── IPC: Read resource file ────────────────────────────────────────────────────
 ipcMain.handle('resource:read', async (_, filename) => {
   const filePath = path.join(__dirname, 'resources', filename)

@@ -107,8 +107,6 @@ export function AppProvider({ children }) {
     setEditorTab,
     setLanguage: setLanguage_,
     setFlags,
-    persist,
-    insertTab,
   }
 
   return (

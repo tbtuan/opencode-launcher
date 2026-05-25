@@ -67,5 +67,4 @@ export const api = {
   writeClipboard: (text) => invokeIpc('writeClipboard', text),
   checkDirectories: (paths) => invokeIpc('checkDirectories', paths),
   readResource: (filename) => invokeIpc('readResource', filename),
-  loadI18n: (lang) => invokeIpc('loadI18n', lang),
 }

@@ -1,11 +1,3 @@
-export function escapeHtml(str) {
-  return String(str)
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-}
-
 export function providerDisplayName(providerID) {
   const names = {
     'opencode': 'OpenCode',
@@ -35,10 +27,4 @@ export function formatTimestamp(isoString, locale) {
 
 export function getDirNameFromPath(path) {
   return path.replace(/[\\/]+$/, '').split(/[\\/]/).pop() || path
-}
-
-export function replaceListener(el, handler) {
-  const clone = el.cloneNode(true)
-  el.parentNode.replaceChild(clone, el)
-  clone.addEventListener('click', handler)
 }

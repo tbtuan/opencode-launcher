@@ -4,7 +4,7 @@ import styles from './Tab.module.css'
 import { t } from '../../i18n'
 import { useApp } from '../../store/AppContext'
 
-export function Tab({ id, tab, isHome, label, isActive, onActivate, onClose, onContextMenu, onMoveTab, index, totalTabs, hasSplits }) {
+export function Tab({ id, tab, isHome, label, isActive, onActivate, onClose, onContextMenu, index, totalTabs, hasSplits }) {
   const { state } = useApp()
   const splits = tab ? state.tabs.filter(t => t.parentId === tab.id) : []
   const processing = tab?.isProcessing?.() || splits.some(s => s.isProcessing?.())

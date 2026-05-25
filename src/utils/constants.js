@@ -28,14 +28,4 @@ export const STARTUP_POLL_INTERVAL_MS = 200
 export const STARTUP_FALLBACK_TIMEOUT_MS = 5000
 export const USER_ACTION_BLOCK_MS = 300
 export const SCROLL_BLOCK_MS = 500
-export const PASTE_BLOCK_MS = 1000
-export const RESIZE_SUPPRESS_MS = 500
-export const PREVIEW_CREATE_DELAY_MS = 100
-export const PTY_AUTO_START_DELAY_MS = 500
 export const INPUT_ECHO_TIMEOUT_MS = 500
-
-export const PROVIDER_NAMES = {
-  'opencode': 'OpenCode',
-  'github-copilot': 'GitHub Copilot',
-  'litellm': 'LiteLLM',
-}

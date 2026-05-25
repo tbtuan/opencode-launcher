@@ -38,7 +38,7 @@ beforeEach(() => {
     writeClipboard: vi.fn(() => Promise.resolve()),
     checkDirectories: vi.fn(() => Promise.resolve([])),
     readResource: vi.fn(() => Promise.resolve('')),
-    loadI18n: vi.fn(() => Promise.resolve(null)),
+
   }
 })
 
@@ -152,13 +152,6 @@ describe('api IPC bridge', () => {
     expect(window.api.readResource).toHaveBeenCalledOnce()
     expect(window.api.readResource).toHaveBeenCalledWith(filename)
     expect(result).toBe('')
-  })
-
-  it('api.loadI18n(lang) calls window.api.loadI18n(lang)', async () => {
-    const result = await api.loadI18n(lang)
-    expect(window.api.loadI18n).toHaveBeenCalledOnce()
-    expect(window.api.loadI18n).toHaveBeenCalledWith(lang)
-    expect(result).toBeNull()
   })
 
   it('api.openFolder(lang) calls window.api.openFolder(lang)', async () => {

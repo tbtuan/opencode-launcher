@@ -50,18 +50,6 @@
 
 .chromeBtn:hover { background: #1e8ad6; }
 
-.closeBtn {
-  background: none;
-  border: none;
-  color: #888;
-  font-size: 20px;
-  cursor: pointer;
-  padding: 4px 8px;
-  line-height: 1;
-  flex-shrink: 0;
-}
-.closeBtn:hover { color: #fff; }
-
 .headerRight {
   display: flex;
   align-items: center;

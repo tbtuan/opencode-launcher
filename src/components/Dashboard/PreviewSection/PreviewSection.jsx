@@ -20,6 +20,7 @@ export function PreviewSection({ previews, onActivate }) {
             isProcessing={p.isProcessing}
             onClick={onActivate}
             splits={p.splits}
+            splitRatio={p.splitRatio}
           />
         ))}
       </div>

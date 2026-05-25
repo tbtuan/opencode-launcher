@@ -632,7 +632,6 @@ function AppInner() {
         onCloseTab={closeTab}
         onAddTab={() => document.dispatchEvent(new CustomEvent('open-add-directory'))}
         onContextMenu={(x, y, id, type, hasSplits) => setContextMenu({ x, y, visible: true, targetId: id, type, hasSplits: !!hasSplits })}
-        onMoveTab={moveTab}
       />
 
       <div ref={contentRef} className={styles.content} id="content-area">

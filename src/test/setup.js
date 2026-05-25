@@ -22,5 +22,4 @@ window.api = {
   writeClipboard: () => Promise.resolve(),
   checkDirectories: () => Promise.resolve([]),
   readResource: () => Promise.resolve(''),
-  loadI18n: () => Promise.resolve(null),
 }

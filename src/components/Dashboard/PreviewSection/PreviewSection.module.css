@@ -95,9 +95,19 @@
 
 .splitPreview {
   border-top: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.previewBody {
+  display: flex;
+  flex-direction: column;
+  height: 280px;
+  min-height: 0;
 }
 
 .terminal {
   overflow: hidden;
-  min-height: 60px;
+  min-height: 0;
 }
