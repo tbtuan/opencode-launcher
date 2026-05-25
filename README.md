@@ -28,7 +28,7 @@ A tab-based Electron launcher for managing multiple OpenCode terminal sessions, 
   - `Escape` – Close dialogs, context menus
 - **Copy & Paste** – `Ctrl+C` copies terminal selection to clipboard; `Ctrl+V` pastes clipboard content into the terminal
 - **Auto-Resize** – Terminal and PTY automatically resize on window resize, tab switch, or split close
-- **Processing Detection** – Terminal indicator shows processing state (green = idle, yellow = processing, red = error, gray = stopped)
+- **Processing Detection** – Terminal indicator shows processing state (green = idle, yellow = processing > 100 bytes output, red = error, gray = stopped). Suppressed during tab switch (500ms), mouse movement/scroll (200ms) to prevent resize redraws or app responses from falsely triggering the indicator. Mouse tracking data is filtered at source level.
 - **Display Name Deduplication** – Multiple terminals in the same directory are suffixed with `(1)`, `(2)`, etc.
 - **Error Handling** – PTY errors are shown inline in the terminal output
 
@@ -81,7 +81,7 @@ A tab-based Electron launcher for managing multiple OpenCode terminal sessions, 
 ### Technical
 - **React 18 + Vite** – Modern frontend toolchain with HMR during development
 - **CSS Modules** – Component-scoped styling with global variables for theming
-- **Logger Service** – BroadcastChannel-based logger with 2000-entry ring buffer, subscribable from both main window and DevTool window
+- **Logger Service** – BroadcastChannel-based logger with 2000-entry ring buffer, subscribable from both main window and DevTool window; auto-saves last 500 entries to `logs/` on error (max once per 30s) with IPC timing instrumentation (>10ms logged as debug)
 - **PTY-Based Terminals** – Uses `node-pty` for real shell sessions with xterm.js rendering
 - **Graceful Shutdown** – All PTY processes are killed on window close
 - **xterm.js v6** – Modern terminal rendering with fit addon, custom key handlers, and scroll suppression
@@ -89,6 +89,7 @@ A tab-based Electron launcher for managing multiple OpenCode terminal sessions, 
 - **Auto-Hide Menu Bar** – Clean, distraction-free UI with application menu disabled
 - **Electron Context Isolation** – Secure IPC via preload bridge with `contextIsolation: true`
 - **Error Boundary** – React error boundary catches render errors without crashing the full app
+- **Log Persistence** – Errors auto-save a crash log to `logs/` in the project root (gitignored)
 - **Config Merge** – Saves config with merge semantics (`{...existing, ...updates}`) to preserve unknown fields
 - **142 Tests** – Vitest with React Testing Library and jsdom environment
 

@@ -1,7 +1,7 @@
 import { useRef, useEffect, useCallback, useState } from 'react'
 import styles from './TerminalPane.module.css'
 import { useTerminalSetup } from '../../hooks/useTerminalSetup'
-import { useProcessingDetection } from '../../hooks/useProcessingDetection'
+import { useProcessingDetection, isMouseTrackingData } from '../../hooks/useProcessingDetection'
 import {
   writeToPty, onPtyData, onPtyExit, onOpencodeStarted,
   triggerPaste, onPasteComplete, writeClipboard, resizePty,
@@ -43,14 +43,14 @@ function SplitPane({ tab, parentTab, onSplitClose }) {
     const term = terminalRef.current
     if (!term) return
 
-    const unsubKey = term.onKey(() => suppressIndicator(300))
+    const unsubKey = term.onKey(() => {})
     const timeout = setTimeout(() => {
       const el = term.element
       if (!el) return
-      el.addEventListener('wheel', () => suppressIndicator(500), { passive: true })
     }, 50)
     const unsubData = term.onData((data) => {
       handleUserInput(data)
+      if (isMouseTrackingData(data)) suppressIndicator(200)
       writeToPty(tab.id, data)
     })
 
@@ -119,11 +119,10 @@ function SplitPane({ tab, parentTab, onSplitClose }) {
 
   useEffect(() => {
     const unsub = onPasteComplete(tab.id, (text) => {
-      suppressIndicator(1000)
       terminalRef.current?.input('\x1b[200~' + text + '\x1b[201~')
     })
     return () => unsub?.()
-  }, [tab.id, suppressIndicator, terminalRef])
+  }, [tab.id, terminalRef])
 
   const fitAndResize = useCallback(() => {
     suppressIndicator(500)
@@ -213,22 +212,16 @@ export function TerminalPane({ tab, isActive, onProcessingChange, onStatusChange
     const term = terminalRef.current
     if (!term) return
 
-    const unsubKey = term.onKey(() => suppressIndicator(300))
-
-    const timeout = setTimeout(() => {
-      const el = term.element
-      if (!el) return
-      el.addEventListener('wheel', () => suppressIndicator(500), { passive: true })
-    }, 50)
+    const unsubKey = term.onKey(() => {})
 
     const unsubData = term.onData((data) => {
       handleUserInput(data)
+      if (isMouseTrackingData(data)) suppressIndicator(200)
       writeToPty(tab.id, data)
     })
 
     return () => {
       unsubKey.dispose()
-      clearTimeout(timeout)
       unsubData.dispose()
     }
   }, [terminalRef, tab.id, suppressIndicator, handleUserInput])
@@ -300,11 +293,10 @@ export function TerminalPane({ tab, isActive, onProcessingChange, onStatusChange
   // Paste complete handler
   useEffect(() => {
     const unsub = onPasteComplete(tab.id, (text) => {
-      suppressIndicator(1000)
       terminalRef.current?.input('\x1b[200~' + text + '\x1b[201~')
     })
     return () => unsub?.()
-  }, [tab.id, suppressIndicator, terminalRef])
+  }, [tab.id, terminalRef])
 
   const fitRafRef = useRef(null)
 
