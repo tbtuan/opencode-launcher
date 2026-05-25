@@ -1,4 +1,4 @@
-# OpenCode Launcher
+# <img src="public/icon.svg" alt="" width="32" height="32" style="vertical-align: middle;"> OpenCode Launcher
 
 A tab-based Electron launcher for managing multiple OpenCode terminal sessions, built with **React + Vite + CSS Modules**.
 
