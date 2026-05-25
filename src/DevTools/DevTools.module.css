@@ -1,0 +1,334 @@
+/* ── Full-screen overlay ────────────────────────────────── */
+.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  background: #1e1e1e;
+  display: flex;
+  flex-direction: column;
+}
+
+.app {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: #1e1e1e;
+  color: #cccccc;
+  font-family: 'Cascadia Code', 'Consolas', 'Segoe UI', monospace;
+  font-size: 12px;
+}
+
+/* ── Header ─────────────────────────────────────────────── */
+.header {
+  padding: 8px 16px;
+  background: #2d2d2d;
+  border-bottom: 1px solid #404040;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.title {
+  font-size: 13px;
+  font-weight: 600;
+  color: #ffffff;
+}
+
+.chromeBtn {
+  background: #007acc;
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  padding: 6px 14px;
+  font-size: 11px;
+  cursor: pointer;
+  transition: background 0.12s;
+  flex-shrink: 0;
+}
+
+.chromeBtn:hover { background: #1e8ad6; }
+
+.closeBtn {
+  background: none;
+  border: none;
+  color: #888;
+  font-size: 20px;
+  cursor: pointer;
+  padding: 4px 8px;
+  line-height: 1;
+  flex-shrink: 0;
+}
+.closeBtn:hover { color: #fff; }
+
+.headerRight {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+}
+
+/* ── Content ────────────────────────────────────────────── */
+.content {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ── Log Viewer ─────────────────────────────────────────── */
+.logViewer {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.filterBar {
+  display: flex;
+  gap: 8px;
+  padding: 8px 12px;
+  background: #252526;
+  border-bottom: 1px solid #404040;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.filterSelect {
+  background: #3c3c3c;
+  color: #cccccc;
+  border: 1px solid #555;
+  border-radius: 3px;
+  padding: 4px 8px;
+  font-size: 11px;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.filterInput {
+  flex: 1;
+  background: #3c3c3c;
+  color: #cccccc;
+  border: 1px solid #555;
+  border-radius: 3px;
+  padding: 4px 8px;
+  font-size: 11px;
+  font-family: inherit;
+}
+
+.filterInput::placeholder { color: #666; }
+
+.filterBtn {
+  background: #555;
+  color: #cccccc;
+  border: none;
+  border-radius: 3px;
+  padding: 4px 12px;
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.filterBtn:hover { background: #666; }
+
+.logCount {
+  color: #888;
+  font-size: 11px;
+  margin-left: auto;
+  white-space: nowrap;
+}
+
+/* ── Log List ───────────────────────────────────────────── */
+.logList {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.logEntry {
+  display: flex;
+  gap: 8px;
+  padding: 2px 12px;
+  cursor: pointer;
+  border-bottom: 1px solid #2a2a2a;
+  line-height: 1.6;
+  font-size: 12px;
+}
+
+.logEntry:hover {
+  background: #2a2a2a;
+}
+
+.logEntry.expanded {
+  background: #2d2d2d;
+}
+
+.logTime {
+  color: #888;
+  flex-shrink: 0;
+  width: 85px;
+}
+
+.logLevel {
+  flex-shrink: 0;
+  width: 40px;
+  text-align: center;
+  border-radius: 2px;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.levelBadge_info {
+  color: #4ec9b0;
+}
+
+.levelBadge_warn {
+  color: #dcdcaa;
+  background: rgba(220, 220, 170, 0.1);
+}
+
+.levelBadge_error {
+  color: #f44747;
+  background: rgba(244, 71, 71, 0.1);
+}
+
+.levelBadge_debug {
+  color: #888;
+}
+
+.logComponent {
+  color: #569cd6;
+  flex-shrink: 0;
+  min-width: 100px;
+}
+
+.logMessage {
+  color: #cccccc;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.expanded .logMessage {
+  white-space: pre-wrap;
+  overflow: visible;
+}
+
+/* ── Levels ─────────────────────────────────────────────── */
+.level_info .logTime { color: #888; }
+.level_warn { background: rgba(220, 220, 170, 0.03); }
+.level_error { background: rgba(244, 71, 71, 0.05); }
+.level_debug { opacity: 0.6; }
+
+/* ── Empty state ────────────────────────────────────────── */
+.empty {
+  padding: 40px;
+  text-align: center;
+  color: #555;
+  font-size: 14px;
+}
+
+/* ── Status Bar ─────────────────────────────────────────── */
+.statusBar {
+  padding: 4px 12px;
+  background: #252526;
+  border-top: 1px solid #404040;
+  font-size: 10px;
+  color: #666;
+  flex-shrink: 0;
+  display: flex;
+  justify-content: space-between;
+}
+
+.recordingIndicator {
+  color: #f44747;
+  animation: recording-pulse 1s ease-in-out infinite;
+}
+
+@keyframes recording-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+.recordingBtn {
+  background: #8a3a3a !important;
+  color: #fff !important;
+}
+
+.recordingBtn:hover { background: #a33 !important; }
+
+/* ── Recorded Logs Dialog ───────────────────────────────── */
+.dialogOverlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.dialog {
+  background: #1e1e1e;
+  border: 1px solid #555;
+  border-radius: 8px;
+  width: 80%;
+  max-width: 900px;
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+}
+
+.dialogHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 16px;
+  border-bottom: 1px solid #404040;
+  font-size: 13px;
+  font-weight: 600;
+  color: #cccccc;
+}
+
+.dialogClose {
+  background: none;
+  border: none;
+  color: #888;
+  font-size: 20px;
+  cursor: pointer;
+  padding: 0 4px;
+  line-height: 1;
+}
+
+.dialogClose:hover { color: #fff; }
+
+.dialogContent {
+  flex: 1;
+  overflow: auto;
+  padding: 12px 16px;
+  margin: 0;
+  font-family: 'Cascadia Code', 'Consolas', monospace;
+  font-size: 11px;
+  line-height: 1.5;
+  color: #cccccc;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+.dialogActions {
+  display: flex;
+  gap: 8px;
+  padding: 10px 16px;
+  border-top: 1px solid #404040;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+.saveStatus {
+  flex: 1;
+  font-size: 11px;
+  color: #4ec9b0;
+}
+
+

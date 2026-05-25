@@ -9,6 +9,8 @@ import { ContextMenu } from './components/ContextMenu/ContextMenu'
 import { SettingsDialog } from './components/Modals/SettingsDialog'
 import { RestartDialog } from './components/Modals/RestartDialog'
 import { RebuildOverlay } from './components/Modals/RebuildOverlay'
+import { DevToolsApp } from './DevTools/DevToolsApp'
+import { logger } from './services/logger'
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts'
 import { useResizeObserver } from './hooks/useResizeObserver'
 import { loadConfig, checkAndCleanDirectories, persistConfig, persistTabOrder, generateId } from './services/configService'
@@ -29,7 +31,7 @@ function AppInner() {
   } = useApp()
 
   const contentRef = useRef(null)
-  const [contextMenu, setContextMenu] = useState({ x: 0, y: 0, visible: false, targetId: null, type: 'tab' })
+  const [contextMenu, setContextMenu] = useState({ x: 0, y: 0, visible: false, targetId: null, type: 'tab', hasSplits: false })
   const [showSettings, setShowSettings] = useState(false)
   const [showRestart, setShowRestart] = useState(false)
   const [nextLang, setNextLang] = useState(null)
@@ -91,7 +93,7 @@ function AppInner() {
 
         dispatch({ type: 'SET_INITIAL_DATA', payload: { isLoaded: true } })
       } catch (e) {
-        console.error('[init]', e)
+        logger?.error?.('App', 'init', e?.message)
         dispatch({ type: 'SET_INITIAL_DATA', payload: { isLoaded: true } })
       }
     }
@@ -107,7 +109,10 @@ function AppInner() {
     const autoLaunch = state.savedDirectories.filter(d => d.startOnLaunch)
     async function run() {
       for (const dir of autoLaunch) {
-        const args = dir.continueSession ? '--continue' : ''
+        const args = [
+          dir.model ? `--model ${dir.model}` : '',
+          dir.continueSession ? '--continue' : '',
+        ].filter(Boolean).join(' ')
         await createTab(dir.name, dir.path, args, dir._id)
       }
       // Activate default tab
@@ -174,7 +179,7 @@ function AppInner() {
       if (result?.ok) {
         updateTab(id, { status: 'running', isProcessing: () => true })
         recalcDisplayNames(cwd)
-        window.dispatchEvent(new CustomEvent('resize-active-tab'))
+        document.dispatchEvent(new CustomEvent('resize-active-tab'))
       }
     } catch (e) {
       updateTab(id, { status: 'error' })
@@ -218,6 +223,13 @@ function AppInner() {
         try { await killPty(id) } catch {}
         clearTerminalDimensions(id)
         const closedCwd = tab.cwd
+        // Close child splits
+        const childSplits = state.tabs.filter(t => t.parentId === id)
+        for (const s of childSplits) {
+          try { await killPty(s.id) } catch {}
+          clearTerminalDimensions(s.id)
+          removeTab(s.id)
+        }
         removeTab(id)
         recalcDisplayNames(closedCwd)
       }
@@ -231,9 +243,41 @@ function AppInner() {
         }
       }
     } catch (e) {
-      console.error('[closeTab] Error:', e)
+      logger.error('App', 'closeTab', e?.message)
     }
   }, [state.tabs, state.activeId, state.editorTabId, setActiveTab, setEditorTab, removeTab, updateTab])
+
+  // Split terminal
+  const handleSplitTerminal = useCallback(async (tab) => {
+    if (!tab || tab.type !== 'terminal') return
+    const splitId = generateTabId()
+    const splitTab = {
+      id: splitId,
+      parentId: tab.id,
+      name: tab.name,
+      displayName: tab.name,
+      cwd: tab.cwd,
+      dirId: null,
+      type: 'terminal',
+      isSplit: true,
+      status: 'starting',
+      isProcessing: () => false,
+      isDirty: false,
+    }
+    addTab(splitTab)
+    setTimeout(() => {
+      document.dispatchEvent(new CustomEvent('resize-active-tab'))
+    }, 0)
+    try {
+      const result = await createPtySession(splitId, tab.cwd, '', false)
+      if (result?.ok) {
+        updateTab(splitId, { status: 'running', isProcessing: () => true })
+        document.dispatchEvent(new CustomEvent('resize-active-tab'))
+      }
+    } catch (e) {
+      updateTab(splitId, { status: 'error' })
+    }
+  }, [addTab, updateTab])
 
   // Restart terminal
   const restartTerminal = useCallback(async (dir, tab) => {
@@ -297,18 +341,33 @@ function AppInner() {
   // Context menu handler
   useEffect(() => {
     const handler = (e) => {
-      const { x, y, targetId, type } = e.detail
-      setContextMenu({ x, y, visible: true, targetId, type })
+      const { x, y, targetId, type, hasSplits } = e.detail
+      setContextMenu({ x, y, visible: true, targetId, type, hasSplits: !!hasSplits })
     }
     document.addEventListener('context-menu', handler)
     return () => document.removeEventListener('context-menu', handler)
   }, [])
 
   const handleContextClose = useCallback(() => {
-    setContextMenu(prev => ({ ...prev, visible: false, targetId: null }))
+    setContextMenu(prev => ({ ...prev, visible: false, targetId: null, hasSplits: false }))
   }, [])
 
   // Context menu actions
+  const handleCtxSplitTerminal = useCallback(() => {
+    const id = contextMenu.targetId
+    const hasSplits = contextMenu.hasSplits
+    handleContextClose()
+    if (!id) return
+    const tab = state.tabs.find(t => t.id === id)
+    if (!tab) return
+    if (hasSplits) {
+      const childSplits = state.tabs.filter(t => t.parentId === id)
+      childSplits.forEach(s => closeTab(s.id))
+    } else {
+      handleSplitTerminal(tab)
+    }
+  }, [contextMenu.targetId, contextMenu.hasSplits, state.tabs, handleContextClose, handleSplitTerminal, closeTab])
+
   const handleCtxRestart = useCallback(async () => {
     const id = contextMenu.targetId
     handleContextClose()
@@ -445,6 +504,30 @@ function AppInner() {
     return () => document.removeEventListener('activate-tab', handler)
   }, [setActiveTab])
 
+  // Build status indicator — updates window title
+  useEffect(() => {
+    const unsub = api.onBuildStatus((data) => {
+      if (data.status === 'needsBuild' || data.status === 'building') {
+        document.title = '\u26A0 OpenCode Launcher'
+      } else if (data.status === 'done') {
+        document.title = 'OpenCode Launcher'
+      }
+    })
+    return () => unsub?.()
+  }, [])
+
+  // Track split ratio changes
+  useEffect(() => {
+    const handler = (e) => {
+      const { tabId, ratio } = e.detail
+      // Find all split children of this tab and update their ratio
+      const splits = state.tabs.filter(t => t.parentId === tabId)
+      splits.forEach(s => updateTab(s.id, { splitRatio: ratio }))
+    }
+    document.addEventListener('split-ratio-change', handler)
+    return () => document.removeEventListener('split-ratio-change', handler)
+  }, [state.tabs, updateTab])
+
   // Render panes for tabs
   const terminalTabRefs = useRef({})
   const editorTabRefs = useRef({})
@@ -497,6 +580,11 @@ function AppInner() {
     setShowSettings(false)
   }, [])
 
+  // DevTools separate window route (detected via URL hash)
+  if (typeof window !== 'undefined' && window.location.hash === '#/devtools') {
+    return <DevToolsApp />
+  }
+
   return (
     <div className={styles.app}>
       <TabBar
@@ -505,7 +593,7 @@ function AppInner() {
         onActivate={setActiveTab}
         onCloseTab={closeTab}
         onAddTab={() => document.dispatchEvent(new CustomEvent('open-add-directory'))}
-        onContextMenu={(x, y, id, type) => setContextMenu({ x, y, visible: true, targetId: id, type })}
+        onContextMenu={(x, y, id, type, hasSplits) => setContextMenu({ x, y, visible: true, targetId: id, type, hasSplits: !!hasSplits })}
         onMoveTab={moveTab}
       />
 
@@ -520,7 +608,7 @@ function AppInner() {
         </div>
 
         {/* Terminal Panes */}
-        {state.tabs.filter(t => t.type !== 'editor').map(tab => (
+        {state.tabs.filter(t => t.type !== 'editor' && !t.isSplit).map(tab => (
           <div
             key={tab.id}
             className={`${styles.contentPane} ${tab.id === state.activeId ? styles.active : ''}`}
@@ -530,6 +618,7 @@ function AppInner() {
               isActive={tab.id === state.activeId}
               onProcessingChange={handleProcessingChange}
               onStatusChange={handleStatusChange}
+              splits={state.tabs.filter(t => t.parentId === tab.id)}
             />
           </div>
         ))}
@@ -556,7 +645,10 @@ function AppInner() {
         y={contextMenu.y}
         visible={contextMenu.visible}
         type={contextMenu.type}
+        hasSplits={contextMenu.hasSplits}
         onClose={handleContextClose}
+        onSplitTerminal={handleCtxSplitTerminal}
+        onCloseSplitTerminal={handleCtxSplitTerminal}
         onRestart={handleCtxRestart}
         onCloseTab={handleCtxCloseTab}
         onSave={handleCtxSave}

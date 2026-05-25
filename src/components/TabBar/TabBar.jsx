@@ -14,20 +14,24 @@ export function TabBar({ tabs, activeId, onActivate, onCloseTab, onAddTab, onCon
         onActivate={onActivate}
       />
       <div className={styles.tabsContainer} id="tabs-container">
-        {tabs.map((tab, idx) => (
-          <Tab
-            key={tab.id}
-            id={tab.id}
-            tab={tab}
-            isActive={tab.id === activeId}
-            onActivate={onActivate}
-            onClose={onCloseTab}
-            onContextMenu={onContextMenu}
-            onMoveTab={onMoveTab}
-            index={idx}
-            totalTabs={tabs.length}
-          />
-        ))}
+        {tabs.filter(t => !t.isSplit).map((tab, idx) => {
+          const hasSplits = tabs.some(t => t.parentId === tab.id)
+          return (
+            <Tab
+              key={tab.id}
+              id={tab.id}
+              tab={tab}
+              isActive={tab.id === activeId}
+              onActivate={onActivate}
+              onClose={onCloseTab}
+              onContextMenu={onContextMenu}
+              onMoveTab={onMoveTab}
+              index={idx}
+              totalTabs={tabs.length}
+              hasSplits={hasSplits}
+            />
+          )
+        })}
       </div>
       <button
         className={styles.addTabBtn}

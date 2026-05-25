@@ -93,6 +93,11 @@
   50% { opacity: 0.2; }
 }
 
+.splitPreview {
+  border-top: 1px solid var(--border);
+}
+
 .terminal {
   overflow: hidden;
+  min-height: 60px;
 }

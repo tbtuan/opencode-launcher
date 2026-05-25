@@ -1,4 +1,5 @@
 import { api } from './api'
+import { logger } from './logger'
 
 let dirIdCounter = 0
 
@@ -33,7 +34,7 @@ export async function persistConfig(directories, defaultTab, language) {
     const existing = await api.loadConfig()
     await api.saveConfig({ ...existing, directories, defaultTab, language })
   } catch (e) {
-    console.error('[persistConfig]', e)
+    logger.error('ConfigService', 'persistConfig', e)
   }
 }
 
@@ -42,7 +43,7 @@ export async function persistTabOrder(tabOrder) {
     const existing = await api.loadConfig()
     await api.saveConfig({ ...existing, tabOrder })
   } catch (e) {
-    console.error('[persistTabOrder]', e)
+    logger.error('ConfigService', 'persistTabOrder', e)
   }
 }
 

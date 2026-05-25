@@ -3,7 +3,7 @@ import { cn } from '../../utils/cn'
 import styles from './ContextMenu.module.css'
 import { t } from '../../i18n'
 
-export function ContextMenu({ x, y, visible, type, onClose, onRestart, onCloseTab, onSave, onDeleteCard }) {
+export function ContextMenu({ x, y, visible, type, hasSplits, onClose, onRestart, onCloseTab, onSave, onDeleteCard, onSplitTerminal, onCloseSplitTerminal }) {
   const menuRef = useRef(null)
 
   const adjustPosition = useCallback(() => {
@@ -54,6 +54,12 @@ export function ContextMenu({ x, y, visible, type, onClose, onRestart, onCloseTa
       )}
       {isTab && (
         <>
+          {hasSplits ? (
+            <button onClick={onCloseSplitTerminal}>{t('ctx.closeSplitTerminal')}</button>
+          ) : (
+            <button onClick={onSplitTerminal}>{t('ctx.splitTerminal')}</button>
+          )}
+          <hr className={styles.separator} />
           <button onClick={onRestart}>{t('ctx.restart')}</button>
           <hr className={styles.separator} />
         </>

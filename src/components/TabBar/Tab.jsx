@@ -2,8 +2,12 @@ import { useState, useCallback, useRef, useEffect } from 'react'
 import { cn } from '../../utils/cn'
 import styles from './Tab.module.css'
 import { t } from '../../i18n'
+import { useApp } from '../../store/AppContext'
 
-export function Tab({ id, tab, isHome, label, isActive, onActivate, onClose, onContextMenu, onMoveTab, index, totalTabs }) {
+export function Tab({ id, tab, isHome, label, isActive, onActivate, onClose, onContextMenu, onMoveTab, index, totalTabs, hasSplits }) {
+  const { state } = useApp()
+  const splits = tab ? state.tabs.filter(t => t.parentId === tab.id) : []
+  const processing = tab?.isProcessing?.() || splits.some(s => s.isProcessing?.())
   const [isRenaming, setIsRenaming] = useState(false)
   const [renameValue, setRenameValue] = useState('')
   const [isDragging, setIsDragging] = useState(false)
@@ -20,7 +24,7 @@ export function Tab({ id, tab, isHome, label, isActive, onActivate, onClose, onC
     ? tab.status === 'error'
       ? styles.indicatorError
       : tab.status === 'running'
-        ? tab.isProcessing?.()
+        ? processing
           ? `${styles.indicatorRunning} ${styles.indicatorActive}`
           : styles.indicatorRunning
         : styles.indicatorStopped
@@ -38,8 +42,8 @@ export function Tab({ id, tab, isHome, label, isActive, onActivate, onClose, onC
 
   const handleContextMenu = useCallback((e) => {
     e.preventDefault()
-    onContextMenu?.(e.clientX, e.clientY, id, tab?.type === 'editor' ? 'editor' : 'tab')
-  }, [id, tab, onContextMenu])
+    onContextMenu?.(e.clientX, e.clientY, id, tab?.type === 'editor' ? 'editor' : 'tab', hasSplits)
+  }, [id, tab, onContextMenu, hasSplits])
 
   const handleRenameStart = useCallback(() => {
     setIsRenaming(true)

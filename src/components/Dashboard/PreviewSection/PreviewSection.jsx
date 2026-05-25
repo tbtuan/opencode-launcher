@@ -19,6 +19,7 @@ export function PreviewSection({ previews, onActivate }) {
             rows={p.rows || 24}
             isProcessing={p.isProcessing}
             onClick={onActivate}
+            splits={p.splits}
           />
         ))}
       </div>

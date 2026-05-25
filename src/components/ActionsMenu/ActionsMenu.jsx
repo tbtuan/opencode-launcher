@@ -5,6 +5,7 @@ import { t } from '../../i18n'
 import { useApp } from '../../store/AppContext'
 import { refreshModels } from '../../services/modelService'
 import { api } from '../../services/api'
+import { logger } from '../../services/logger'
 
 export function ActionsMenu() {
   const { setModels } = useApp()
@@ -32,7 +33,7 @@ export function ActionsMenu() {
       const result = await refreshModels()
       setModels(result.models, result.timestamp)
     } catch (e) {
-      console.error(e)
+      logger.error('ActionsMenu', 'refreshModels', e?.message)
     }
     setIsLoadingModels(false)
   }, [setModels])
@@ -49,6 +50,12 @@ export function ActionsMenu() {
 
   const handleSettings = useCallback(() => {
     document.dispatchEvent(new CustomEvent('open-settings'))
+  }, [])
+
+  const handleDevTools = useCallback(async () => {
+    try {
+      await api.openDevTools()
+    } catch (e) {}
   }, [])
 
   return (
@@ -80,6 +87,10 @@ export function ActionsMenu() {
         <button id="act-restart-launcher" onClick={() => handleAction(handleRestart)}>
           <span className={styles.icon}>↻</span>
           {t('actions.restartLauncher')}
+        </button>
+        <button id="act-devtools" onClick={() => handleAction(handleDevTools)}>
+          <span className={styles.icon}>⬡</span>
+          {t('actions.devTools')}
         </button>
         <hr className={styles.separator} />
         <button id="act-settings" onClick={() => handleAction(handleSettings)}>

@@ -1,10 +1,12 @@
 // API-Abstraktionsschicht für Electron IPC
 // Läuft im Browser-Mode (z.B. Vite dev) als Mock oder nutzt window.api im Electron-Kontext
 
+import { logger } from './logger'
+
 const isElectron = typeof window !== 'undefined' && window.api
 
 function log(...args) {
-  try { console.log('[api]', ...args) } catch {}
+  try { logger.debug('API', ...args) } catch {}
 }
 
 async function invokeIpc(channel, ...args) {
@@ -55,13 +57,14 @@ export const api = {
   openFolder: (lang) => invokeIpc('openFolder', lang),
   listModels: () => invokeIpc('listModels'),
   refreshModels: () => invokeIpc('refreshModels'),
-  createPty: (tabId, cwd, args) => invokeIpc('createPty', tabId, cwd, args),
+  createPty: (tabId, cwd, args, autoStart = true) => invokeIpc('createPty', tabId, cwd, args, autoStart),
   killPty: (tabId) => invokeIpc('killPty', tabId),
   writePty: (tabId, data) => sendIpc('writePty', tabId, data),
   resizePty: (tabId, cols, rows) => sendIpc('resizePty', tabId, cols, rows),
   onPtyData: (tabId, cb) => onIpc('onPtyData', tabId, cb),
   onPtyExit: (tabId, cb) => onIpc('onPtyExit', tabId, cb),
   restartApp: () => invokeIpc('restartApp'),
+  openDevTools: () => invokeIpc('openDevTools'),
   onBuildStatus: (cb) => onIpc('onBuildStatus', cb),
   readOpencodeConfig: () => invokeIpc('readOpencodeConfig'),
   writeOpencodeConfig: (content, filePath) => invokeIpc('writeOpencodeConfig', content, filePath),

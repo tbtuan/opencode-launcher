@@ -2,34 +2,54 @@ import { useRef, useEffect } from 'react'
 import styles from './PreviewSection.module.css'
 import { usePreviewTerminal } from '../../../hooks/usePreviewTerminal'
 import { t } from '../../../i18n'
+import { logger } from '../../../services/logger'
 
-export function PreviewCard({ tab, cols, rows, isProcessing, onClick }) {
+function PreviewTerminal({ tab, cols, rows }) {
   const containerRef = useRef(null)
   const terminalRef = usePreviewTerminal(containerRef, cols, rows)
+  const dataBufferRef = useRef([])
 
-  // Receive live PTY data forwarded from TerminalPane
   useEffect(() => {
     const handler = (e) => {
-      if (e.detail.tabId === tab.id && terminalRef.current) {
+      if (e.detail.tabId !== tab.id) return
+      if (terminalRef.current) {
         terminalRef.current.write(e.detail.data)
+        try { terminalRef.current.scrollToBottom() } catch {}
+      } else {
+        dataBufferRef.current.push(e.detail.data)
       }
     }
     document.addEventListener('pty-preview-data', handler)
     return () => document.removeEventListener('pty-preview-data', handler)
   }, [tab.id, terminalRef])
 
-  // Keep preview dimensions in sync with main terminal
+  useEffect(() => {
+    if (terminalRef.current && dataBufferRef.current.length > 0) {
+      const buf = dataBufferRef.current
+      buf.forEach(d => {
+        terminalRef.current.write(d)
+        try { terminalRef.current.scrollToBottom() } catch {}
+      })
+      buf.length = 0
+    }
+  })
+
   useEffect(() => {
     const handler = (e) => {
       if (e.detail.tabId === tab.id && terminalRef.current && containerRef.current) {
         terminalRef.current.resize(e.detail.cols, e.detail.rows)
-        containerRef.current.style.height = `${e.detail.rows * Math.round(6 * 1.2) + 40}px`
+        const rowHeight = Math.round(6 * 1.2)
+        containerRef.current.style.height = `${e.detail.rows * rowHeight + 40}px`
       }
     }
     window.addEventListener('preview-resize', handler)
     return () => window.removeEventListener('preview-resize', handler)
   }, [tab.id, terminalRef])
 
+  return <div className={styles.terminal} ref={containerRef} />
+}
+
+export function PreviewCard({ tab, cols, rows, isProcessing, onClick, splits }) {
   return (
     <div
       className={styles.card}
@@ -43,7 +63,19 @@ export function PreviewCard({ tab, cols, rows, isProcessing, onClick }) {
           {' '}{isProcessing ? t('preview.processing') : t('preview.running')}
         </span>
       </div>
-      <div className={styles.terminal} ref={containerRef} />
+      <PreviewTerminal tab={tab} cols={cols} rows={rows} />
+      {splits?.map(split => (
+        <div key={split.tab.id} className={styles.splitPreview}>
+          <div className={styles.cardHeader}>
+            <span className={styles.cardName}>Terminal</span>
+            <span className={`${styles.status} ${split.isProcessing ? styles.statusActive : ''}`}>
+              <span className={`${styles.dot} ${split.isProcessing ? styles.dotActive : ''}`} />
+              {' '}{split.isProcessing ? t('preview.processing') : t('preview.running')}
+            </span>
+          </div>
+          <PreviewTerminal tab={split.tab} cols={split.cols} rows={split.rows} />
+        </div>
+      ))}
     </div>
   )
 }

@@ -57,10 +57,10 @@ describe('api IPC bridge', () => {
     expect(result).toEqual({ ok: true })
   })
 
-  it('api.createPty(tabId, cwd, args) calls window.api.createPty(tabId, cwd, args) with 3 args', async () => {
+  it('api.createPty(tabId, cwd, args) calls window.api.createPty(tabId, cwd, args, true) with autoStart default', async () => {
     const result = await api.createPty(tabId, cwd, args)
     expect(window.api.createPty).toHaveBeenCalledOnce()
-    expect(window.api.createPty).toHaveBeenCalledWith(tabId, cwd, args)
+    expect(window.api.createPty).toHaveBeenCalledWith(tabId, cwd, args, true)
     expect(result).toEqual({ ok: true, pid: 12345 })
   })
 

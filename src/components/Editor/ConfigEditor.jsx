@@ -4,6 +4,7 @@ import 'codemirror/mode/javascript/javascript'
 import 'codemirror/addon/selection/active-line'
 import 'codemirror/addon/edit/matchbrackets'
 import styles from './ConfigEditor.module.css'
+import { logger } from '../../services/logger'
 
 export function ConfigEditor({ tab, isActive, onDirtyChange, onSave }) {
   const containerRef = useRef(null)
@@ -44,7 +45,7 @@ export function ConfigEditor({ tab, isActive, onDirtyChange, onSave }) {
     })
 
     return () => {
-      try { editor.toTextArea() } catch (e) { console.warn('[ConfigEditor] cleanup:', e) }
+      try { editor.toTextArea() } catch (e) { logger.warn('ConfigEditor', 'cleanup', e?.message) }
       editorRef.current = null
     }
   }, []) // eslint-disable-line react-hooks/exhaustive-deps

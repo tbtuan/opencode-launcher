@@ -13,7 +13,7 @@ contextBridge.exposeInMainWorld('api', {
   refreshModels: () => ipcRenderer.invoke('models:refresh'),
 
   // PTY lifecycle
-  createPty: (tabId, cwd, args) => ipcRenderer.invoke('pty:create', { tabId, cwd, args }),
+  createPty: (tabId, cwd, args, autoStart) => ipcRenderer.invoke('pty:create', { tabId, cwd, args, autoStart }),
   killPty: (tabId) => ipcRenderer.invoke('pty:kill', { tabId }),
 
   // PTY I/O
@@ -36,6 +36,7 @@ contextBridge.exposeInMainWorld('api', {
 
   // App
   restartApp: () => ipcRenderer.invoke('app:restart'),
+  openDevTools: () => ipcRenderer.invoke('app:openDevTools'),
   onBuildStatus: (cb) => {
     const handler = (_, data) => cb(data)
     ipcRenderer.on('build:status', handler)
@@ -68,4 +69,10 @@ contextBridge.exposeInMainWorld('api', {
   },
   writeClipboard: (text) => ipcRenderer.invoke('clipboard:write', text),
   checkDirectories: (paths) => ipcRenderer.invoke('fs:checkDirs', paths),
+
+  // Generic IPC for dev tools
+  sendToMain: (channel, data) => ipcRenderer.send(channel, data),
+
+  // Save text file via dialog
+  saveTextFile: (content, defaultName) => ipcRenderer.invoke('dialog:saveText', { content, defaultName }),
 })

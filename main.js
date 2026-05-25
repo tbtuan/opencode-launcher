@@ -5,6 +5,7 @@ const pty = require('node-pty')
 const { execSync, exec } = require('child_process')
 
 let mainWindow
+let devToolsWindow = null
 const ptyProcesses = new Map() // tabId -> pty process
 
 function loadConfig() {
@@ -69,9 +70,25 @@ function createWindow() {
 
   mainWindow.loadFile(path.join(__dirname, 'dist', 'index.html'))
 
+  mainWindow.webContents.on('did-finish-load', () => {
+    const checkScript = path.join(__dirname, 'check-build.js')
+    if (fs.existsSync(checkScript)) {
+      try {
+        execSync(`node "${checkScript}"`, { cwd: __dirname, stdio: 'ignore' })
+      } catch {
+        mainWindow.webContents.send('build:status', { status: 'needsBuild' })
+      }
+    }
+  })
+
+  mainWindow.on('close', () => {
+    console.log('[main] mainWindow close event triggered')
+  })
   mainWindow.on('closed', () => {
+    console.log('[main] mainWindow closed, killing', ptyProcesses.size, 'PTYs')
     // Kill all PTY processes on close
     for (const [id, ptyProc] of ptyProcesses) {
+      console.log('[main] killing PTY', id)
       try { ptyProc.kill() } catch (e) {}
     }
     ptyProcesses.clear()
@@ -111,10 +128,30 @@ ipcMain.handle('dialog:openFolder', async (_, lang) => {
   return result.filePaths[0]
 })
 
+// ── IPC: Save text file via dialog ──────────────────────────────────────────
+ipcMain.handle('dialog:saveText', async (_, { content, defaultName }) => {
+  const result = await dialog.showSaveDialog({
+    defaultPath: defaultName || 'logs.txt',
+    filters: [
+      { name: 'Textdateien', extensions: ['txt', 'log'] },
+      { name: 'Alle Dateien', extensions: ['*'] },
+    ],
+  })
+  if (result.canceled || !result.filePath) return { ok: false }
+  try {
+    fs.writeFileSync(result.filePath, content, 'utf-8')
+    return { ok: true, filePath: result.filePath }
+  } catch (e) {
+    return { ok: false, error: e.message }
+  }
+})
+
 // ── IPC: Create PTY ──────────────────────────────────────────────────────────
-ipcMain.handle('pty:create', (_, { tabId, cwd, args }) => {
+ipcMain.handle('pty:create', (_, { tabId, cwd, args, autoStart }) => {
+  console.log('[main] pty:create', { tabId, cwd, autoStart })
   // Kill existing if any
   if (ptyProcesses.has(tabId)) {
+    console.log('[main] pty:create killing existing for', tabId)
     try { ptyProcesses.get(tabId).kill() } catch (e) {}
     ptyProcesses.delete(tabId)
   }
@@ -141,6 +178,7 @@ ipcMain.handle('pty:create', (_, { tabId, cwd, args }) => {
   })
 
   ptyProc.onExit(({ exitCode }) => {
+    console.log('[main] pty:exit', { tabId, exitCode })
     if (mainWindow && !mainWindow.isDestroyed()) {
       mainWindow.webContents.send(`pty:exit:${tabId}`, exitCode)
     }
@@ -149,15 +187,17 @@ ipcMain.handle('pty:create', (_, { tabId, cwd, args }) => {
 
   ptyProcesses.set(tabId, ptyProc)
 
-  // Auto-start opencode
-  setTimeout(() => {
-    if (ptyProcesses.has(tabId)) {
-      const cmd = args ? `opencode ${args}\r` : 'opencode\r'
-      ptyProc.write(cmd)
-      // Signal renderer that opencode is starting
-      mainWindow?.webContents.send(`opencode:started:${tabId}`)
-    }
-  }, 500)
+  // Auto-start opencode (skip for split terminals and when explicitly disabled)
+  if (autoStart !== false) {
+    setTimeout(() => {
+      if (ptyProcesses.has(tabId)) {
+        const cmd = args ? `opencode ${args}\r` : 'opencode\r'
+        ptyProc.write(cmd)
+        // Signal renderer that opencode is starting
+        mainWindow?.webContents.send(`opencode:started:${tabId}`)
+      }
+    }, 500)
+  }
 
   return { ok: true, pid: ptyProc.pid }
 })
@@ -166,6 +206,8 @@ ipcMain.handle('pty:create', (_, { tabId, cwd, args }) => {
 ipcMain.on('pty:write', (_, { tabId, data }) => {
   const ptyProc = ptyProcesses.get(tabId)
   if (ptyProc) {
+    const isExitCmd = data.includes('exit') || data.includes('\x04') || data.includes('\x03')
+    if (isExitCmd) console.log('[main] pty:write EXIT CMD for', tabId, JSON.stringify(data))
     try { ptyProc.write(data) } catch (e) {}
   }
 })
@@ -180,6 +222,7 @@ ipcMain.on('pty:resize', (_, { tabId, cols, rows }) => {
 
 // ── IPC: Kill PTY ────────────────────────────────────────────────────────────
 ipcMain.handle('pty:kill', (_, { tabId }) => {
+  console.log('[main] pty:kill', { tabId })
   const ptyProc = ptyProcesses.get(tabId)
   if (ptyProc) {
     try { ptyProc.kill() } catch (e) {}
@@ -212,8 +255,31 @@ ipcMain.handle('models:refresh', () => {
   return { models, timestamp }
 })
 
+// ── IPC: Open DevTools (separate window with custom log viewer) ─────────────
+ipcMain.handle('app:openDevTools', () => {
+  if (devToolsWindow && !devToolsWindow.isDestroyed()) {
+    devToolsWindow.focus()
+    return
+  }
+
+  devToolsWindow = new BrowserWindow({
+    width: 1000,
+    height: 750,
+    title: 'OpenCode Launcher — Entwicklertools',
+    webPreferences: {
+      preload: path.join(__dirname, 'preload-dev.js'),
+      contextIsolation: true,
+      nodeIntegration: false,
+    },
+  })
+  const indexPath = path.join(__dirname, 'dist', 'index.html').replace(/\\/g, '/')
+  devToolsWindow.loadURL(`file://${indexPath}#/devtools`)
+  devToolsWindow.on('closed', () => { devToolsWindow = null })
+})
+
 // ── IPC: Restart App ─────────────────────────────────────────────────────────
 ipcMain.handle('app:restart', async (event) => {
+  console.log('[main] app:restart called')
   const checkScript = path.join(__dirname, 'check-build.js')
   if (fs.existsSync(checkScript)) {
     try {
@@ -226,6 +292,7 @@ ipcMain.handle('app:restart', async (event) => {
             console.error('[restart] Build failed:', err.message)
             reject(err)
           } else {
+            event.sender.send('build:status', { status: 'done' })
             resolve()
           }
         })

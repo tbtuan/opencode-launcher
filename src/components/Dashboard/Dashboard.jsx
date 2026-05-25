@@ -115,13 +115,22 @@ export function Dashboard({ onOpenTerminal, onCloseTab, onRestartTerminal }) {
   const previews = Array.from((() => {
     const map = new Map()
     for (const tab of state.tabs) {
-      if (tab.type !== 'editor' && tab.status === 'running') {
+      if (tab.type !== 'editor' && tab.status === 'running' && !tab.isSplit) {
         const dims = getTerminalDimensions(tab.id)
+        const childSplits = state.tabs.filter(t => t.parentId === tab.id && t.status === 'running')
+        const splits = childSplits.map(s => ({
+          tab: s,
+          isProcessing: s.isProcessing?.(),
+          cols: getTerminalDimensions(s.id)?.cols || 80,
+          rows: getTerminalDimensions(s.id)?.rows || 24,
+          splitRatio: s.splitRatio || 0.5,
+        }))
         map.set(tab.id, {
           tab,
           isProcessing: tab.isProcessing?.(),
           cols: dims?.cols || 80,
           rows: dims?.rows || 24,
+          splits,
         })
       }
     }
