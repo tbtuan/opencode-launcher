@@ -69,6 +69,13 @@
   letter-spacing: 0.3px;
 }
 
+.badgeContinue {
+  font-size: 10px;
+  color: #569cd6;
+  margin-top: 2px;
+  letter-spacing: 0.3px;
+}
+
 .actions {
   display: flex;
   align-items: center;

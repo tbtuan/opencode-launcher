@@ -120,6 +120,9 @@ export function DirectoryCard({ dir, onOpenTerminal, onCloseTab, onRestartTermin
           {dir.startOnLaunch && (
             <div className={styles.badgeAutoLaunch}>&#9654; {t('editor.startOnLaunch')}</div>
           )}
+          {dir.continueSession && (
+            <div className={styles.badgeContinue}>&#8635; {t('editor.continueSession')}</div>
+          )}
         </div>
         <div className={styles.actions}>
           <button className={`${styles.actionBtn} ${styles.settingsBtn}`} onClick={handleSettings} title={t('card.btn.settings')}>
