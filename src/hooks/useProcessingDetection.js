@@ -111,6 +111,16 @@ export function useProcessingDetection({ terminalRef, onProcessingChange, tabId 
     return cleanup
   }, [cleanup])
 
+  useEffect(() => {
+    const handler = () => {
+      if (document.visibilityState === 'visible') {
+        suppressIndicator(500)
+      }
+    }
+    document.addEventListener('visibilitychange', handler)
+    return () => document.removeEventListener('visibilitychange', handler)
+  }, [suppressIndicator])
+
   return {
     suppressIndicator,
     handlePtyData,
