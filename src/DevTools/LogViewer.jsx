@@ -122,12 +122,47 @@ export function LogViewer({ logs, onClear }) {
     return d.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit', second: '2-digit', fractionalSecondDigits: 3 })
   }
 
+  const copyToClipboard = useCallback(async (text) => {
+    try {
+      const api = typeof window !== 'undefined' ? window.api : null
+      if (api?.writeClipboard) {
+        await api.writeClipboard(text)
+      } else {
+        await navigator.clipboard.writeText(text)
+      }
+    } catch {}
+  }, [])
+
   const formatArgs = (args) => {
     return args.map(a => {
       if (typeof a === 'string') return a
       try { return JSON.stringify(a, null, 2) } catch { return String(a) }
     }).join(' ')
   }
+
+  const [ctxMenu, setCtxMenu] = useState({ x: 0, y: 0, visible: false })
+
+  const handleContextMenu = useCallback((e, entry) => {
+    e.preventDefault()
+    setCtxMenu({ x: e.clientX, y: e.clientY, visible: true, entry })
+  }, [])
+
+  const handleCtxCopy = useCallback(() => {
+    const entry = ctxMenu.entry
+    if (!entry) return
+    const ts = new Date(entry.timestamp).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit', second: '2-digit', fractionalSecondDigits: 3 })
+    const args = entry.args.map(a => typeof a === 'string' ? a : JSON.stringify(a)).join(' ')
+    const text = `[${ts}] [${entry.level.toUpperCase()}] [${entry.component}] ${args}`
+    copyToClipboard(text)
+    setCtxMenu(prev => ({ ...prev, visible: false }))
+  }, [ctxMenu.entry, copyToClipboard])
+
+  useEffect(() => {
+    if (!ctxMenu.visible) return
+    const handler = () => setCtxMenu(prev => ({ ...prev, visible: false }))
+    document.addEventListener('click', handler)
+    return () => document.removeEventListener('click', handler)
+  }, [ctxMenu.visible])
 
   return (
     <div className={styles.logViewer}>
@@ -190,6 +225,7 @@ export function LogViewer({ logs, onClear }) {
             key={entry.id}
             className={`${styles.logEntry} ${styles[`level_${entry.level}`]} ${expanded === entry.id ? styles.expanded : ''}`}
             onClick={() => toggleExpand(entry.id)}
+            onContextMenu={(e) => handleContextMenu(e, entry)}
           >
             <span className={styles.logTime}>{formatTime(entry.timestamp)}</span>
             <span className={`${styles.logLevel} ${styles[`levelBadge_${entry.level}`]}`}>
@@ -206,6 +242,17 @@ export function LogViewer({ logs, onClear }) {
           <div className={styles.empty}>Keine Logs</div>
         )}
       </div>
+
+      {ctxMenu.visible && (
+        <div
+          className={styles.ctxMenu}
+          style={{ left: ctxMenu.x, top: ctxMenu.y, position: 'fixed' }}
+        >
+          <button className={styles.ctxMenuItem} onClick={handleCtxCopy}>
+            Kopieren
+          </button>
+        </div>
+      )}
 
       <div className={styles.statusBar}>
         <span>{autoScroll ? '● Auto-Scroll aktiv' : '○ Auto-Scroll pausiert'}</span>

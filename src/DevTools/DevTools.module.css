@@ -331,4 +331,33 @@
   color: #4ec9b0;
 }
 
+/* ── Log Context Menu ────────────────────────────────────── */
+.ctxMenu {
+  background: #2d2d2d;
+  border: 1px solid #555;
+  border-radius: 4px;
+  padding: 4px 0;
+  z-index: 2000;
+  min-width: 140px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+}
+
+.ctxMenuItem {
+  display: block;
+  width: 100%;
+  background: none;
+  border: none;
+  color: #cccccc;
+  padding: 6px 16px;
+  font-size: 12px;
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.ctxMenuItem:hover {
+  background: #094771;
+  color: #fff;
+}
+
 

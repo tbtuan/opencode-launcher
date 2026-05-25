@@ -277,6 +277,13 @@ ipcMain.handle('app:openDevTools', () => {
   devToolsWindow.on('closed', () => { devToolsWindow = null })
 })
 
+// ── IPC: Open Chrome DevTools on the main window ────────────────────────────
+ipcMain.handle('app:openChromeDevTools', () => {
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.webContents.openDevTools({ mode: 'detach' })
+  }
+})
+
 // ── IPC: Restart App ─────────────────────────────────────────────────────────
 ipcMain.handle('app:restart', async (event) => {
   console.log('[main] app:restart called')

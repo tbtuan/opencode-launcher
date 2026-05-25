@@ -25,7 +25,6 @@ async function invokeIpc(channel, ...args) {
 }
 
 function sendIpc(channel, ...args) {
-  log('sendIpc', channel, args.length, 'args')
   if (isElectron) {
     const method = window.api[channel]
     if (typeof method === 'function') {
@@ -35,18 +34,12 @@ function sendIpc(channel, ...args) {
 }
 
 function onIpc(channel, ...args) {
-  log('onIpc', channel, args.length, 'args')
   if (isElectron) {
     const method = window.api[channel]
     if (typeof method === 'function') {
-      log('onIpc found method for', channel)
       const result = method(...args)
-      log('onIpc result for', channel, typeof result)
       return result
     }
-    log('onIpc NO METHOD for', channel)
-  } else {
-    log('onIpc NOT ELECTRON')
   }
   return () => {}
 }

@@ -35,8 +35,8 @@ export function DevToolsApp() {
   const handleOpenChromeDevTools = () => {
     try {
       const a = typeof window !== 'undefined' ? window.api : null
-      if (a?.openDevTools) {
-        a.openDevTools()
+      if (a?.openChromeDevTools) {
+        a.openChromeDevTools()
       }
     } catch {}
   }
