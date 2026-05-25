@@ -2,6 +2,8 @@
 
 A tab-based Electron launcher for managing multiple OpenCode terminal sessions, built with **React + Vite + CSS Modules**.
 
+![Screenshot](screenshot.png)
+
 ## Features
 
 ### Dashboard
