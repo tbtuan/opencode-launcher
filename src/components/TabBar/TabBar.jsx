@@ -12,6 +12,7 @@ export function TabBar({ tabs, activeId, onActivate, onCloseTab, onAddTab, onCon
         label={t('tab.home')}
         isActive={activeId === 'home'}
         onActivate={onActivate}
+        onContextMenu={onContextMenu}
       />
       <div className={styles.tabsContainer} id="tabs-container">
         {tabs.filter(t => !t.isSplit).map((tab, idx) => {

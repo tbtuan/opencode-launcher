@@ -42,10 +42,20 @@ export function Tab({ id, tab, isHome, label, isActive, onActivate, onClose, onC
     onClose?.(id)
   }, [id, onClose])
 
+  const handleMiddleClick = useCallback((e) => {
+    if (e.button !== 1) return
+    e.preventDefault()
+    e.stopPropagation()
+    if (isHome) return
+    logger.info('Tab', 'Middle-click close tab', { id })
+    onClose?.(id)
+  }, [id, onClose, isHome])
+
   const handleContextMenu = useCallback((e) => {
     e.preventDefault()
-    onContextMenu?.(e.clientX, e.clientY, id, tab?.type === 'editor' ? 'editor' : 'tab', hasSplits)
-  }, [id, tab, onContextMenu, hasSplits])
+    const menuType = isHome ? 'home' : (tab?.type === 'editor' ? 'editor' : 'tab')
+    onContextMenu?.(e.clientX, e.clientY, id, menuType, hasSplits)
+  }, [id, tab, onContextMenu, hasSplits, isHome])
 
   const handleRenameStart = useCallback(() => {
     setIsRenaming(true)
@@ -135,6 +145,7 @@ export function Tab({ id, tab, isHome, label, isActive, onActivate, onClose, onC
       data-id={id}
       title={title}
       onClick={handleClick}
+      onAuxClick={handleMiddleClick}
       onContextMenu={handleContextMenu}
       draggable={!isHome}
       onDragStart={!isHome ? handleDragStart : undefined}

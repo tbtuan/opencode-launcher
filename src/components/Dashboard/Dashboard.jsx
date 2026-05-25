@@ -149,6 +149,10 @@ export function Dashboard({ onOpenTerminal, onCloseTab, onRestartTerminal }) {
     return map
   })()).map(([_, v]) => v)
 
+  const startTabLabel = state.defaultTab === 'home'
+    ? '<Default>'
+    : (state.savedDirectories.find(d => d.path === state.defaultTab)?.name || state.defaultTab)
+
   return (
     <div
       ref={dashboardRef}
@@ -157,6 +161,7 @@ export function Dashboard({ onOpenTerminal, onCloseTab, onRestartTerminal }) {
     >
       <DashboardHeader
         modelsTimestamp={state.modelsTimestamp}
+        startTabLabel={startTabLabel}
       />
 
       <div className={styles.cardsGrid} id="cards-grid">

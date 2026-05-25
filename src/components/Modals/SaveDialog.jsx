@@ -12,6 +12,7 @@ export function SaveDialog({ folderPath, defaultName, onSaveAndOpen, onSaveOnly,
   const [startOnLaunch, setStartOnLaunch] = useState(false)
   const [continueSession, setContinueSession] = useState(false)
   const [selectedModel, setSelectedModel] = useState(undefined)
+  const [setAsDefaultTab, setSetAsDefaultTab] = useState(false)
   const inputRef = useRef(null)
 
   useEffect(() => {
@@ -26,7 +27,8 @@ export function SaveDialog({ folderPath, defaultName, onSaveAndOpen, onSaveOnly,
     startOnLaunch,
     continueSession,
     model: selectedModel,
-  }), [name, defaultName, description, startOnLaunch, continueSession, selectedModel])
+    setAsDefaultTab,
+  }), [name, defaultName, description, startOnLaunch, continueSession, selectedModel, setAsDefaultTab])
 
   const handleSaveAndOpen = useCallback(() => {
     const data = getData()
@@ -104,6 +106,15 @@ export function SaveDialog({ folderPath, defaultName, onSaveAndOpen, onSaveOnly,
             onSelect={setSelectedModel}
           />
         </div>
+
+        <label className={styles.checkRow}>
+          <input
+            type="checkbox"
+            checked={setAsDefaultTab}
+            onChange={(e) => setSetAsDefaultTab(e.target.checked)}
+          />
+          {t('saveDialog.setStartTab')}
+        </label>
 
         <div className={styles.buttons}>
           <button className={styles.btnPrimary} onClick={handleSaveAndOpen}>

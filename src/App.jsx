@@ -513,6 +513,28 @@ function AppInner() {
     if (tab) closeTab(tab.id)
   }, [contextMenu.targetId, state.tabs, removeDirectory, closeTab, handleContextClose])
 
+  const handleCtxSetDefaultTab = useCallback(() => {
+    const id = contextMenu.targetId
+    const type = contextMenu.type
+    handleContextClose()
+
+    let newDefault
+    if (type === 'home' || id === 'home') {
+      newDefault = 'home'
+    } else if (type === 'card') {
+      const dir = state.savedDirectories.find(d => d._id === Number(id))
+      if (dir) newDefault = dir.path
+    } else {
+      const tab = state.tabs.find(t => t.id === id)
+      if (tab?.cwd) newDefault = tab.cwd
+    }
+
+    if (!newDefault) return
+    setDefaultTab(newDefault)
+    persist(state.savedDirectories, newDefault, getLanguage())
+    logger.info('App', 'Set default tab', { targetId: id, type, defaultTab: newDefault })
+  }, [contextMenu.targetId, contextMenu.type, state.tabs, state.savedDirectories, handleContextClose, setDefaultTab, persist])
+
   // Tab drop event
   useEffect(() => {
     const handler = (e) => {
@@ -533,11 +555,16 @@ function AppInner() {
 
   // Save dialog result
   const handleSaveDialogResult = useCallback(async (e) => {
-    const { action, name, folderPath, description, startOnLaunch, continueSession, model } = e.detail
+    const { action, name, folderPath, description, startOnLaunch, continueSession, model, setAsDefaultTab } = e.detail
     logger.info('App', 'Save dialog result', { action, name, folderPath })
     if (action === 'saveAndOpen') {
       const newId = generateId()
-      addDirectory({ _id: newId, name, path: folderPath, description, startOnLaunch, continueSession, model })
+      const newDir = { _id: newId, name, path: folderPath, description, startOnLaunch, continueSession, model }
+      addDirectory(newDir)
+      if (setAsDefaultTab) {
+        setDefaultTab(folderPath)
+        persist([...state.savedDirectories, newDir], folderPath, getLanguage())
+      }
       const args = [
         model ? `--model ${model}` : '',
         continueSession ? '--continue' : '',
@@ -546,12 +573,17 @@ function AppInner() {
       setActiveTab(id)
     } else if (action === 'saveOnly') {
       const newId = generateId()
-      addDirectory({ _id: newId, name, path: folderPath, description, startOnLaunch, continueSession, model })
+      const newDir = { _id: newId, name, path: folderPath, description, startOnLaunch, continueSession, model }
+      addDirectory(newDir)
+      if (setAsDefaultTab) {
+        setDefaultTab(folderPath)
+        persist([...state.savedDirectories, newDir], folderPath, getLanguage())
+      }
     } else if (action === 'openOnly') {
       const id = await createTab(name, folderPath)
       setActiveTab(id)
     }
-  }, [addDirectory, createTab, setActiveTab])
+  }, [addDirectory, createTab, setActiveTab, setDefaultTab, persist, state.savedDirectories])
 
   useEffect(() => {
     document.addEventListener('save-dialog-result', handleSaveDialogResult)
@@ -674,23 +706,22 @@ function AppInner() {
   }, [state.tabs, updateTab])
 
   // Settings
-  const handleSettingsSave = useCallback((selectedTab, selectedLang) => {
-    setDefaultTab(selectedTab)
+  const handleSettingsSave = useCallback((selectedLang) => {
     const langChanged = selectedLang !== getLanguage()
     if (langChanged) {
       setAppLang(selectedLang)
       setLanguage(selectedLang)
     }
-    persist(state.savedDirectories, selectedTab, selectedLang)
+    persist(state.savedDirectories, state.defaultTab, selectedLang)
     setShowSettings(false)
-    logger.info('App', 'Save settings', { defaultTab: selectedTab, language: selectedLang, langChanged })
+    logger.info('App', 'Save settings', { language: selectedLang, langChanged })
     if (langChanged) {
       setNextLang(selectedLang)
       setShowRestart(true)
     } else {
       applyTranslations()
     }
-  }, [state.savedDirectories, setDefaultTab, setAppLang, persist])
+  }, [state.savedDirectories, state.defaultTab, setAppLang, setLanguage, setNextLang, applyTranslations, persist])
 
   const handleSettingsCancel = useCallback(() => {
     logger.info('App', 'Cancel settings')
@@ -769,13 +800,12 @@ function AppInner() {
         onCloseTab={handleCtxCloseTab}
         onSave={handleCtxSave}
         onDeleteCard={handleDeleteCard}
+        onSetDefaultTab={handleCtxSetDefaultTab}
       />
 
       {/* Settings Dialog */}
       {showSettings && (
         <SettingsDialog
-          directories={state.savedDirectories}
-          defaultTab={state.defaultTab}
           flagDe={state.flagDe}
           flagEn={state.flagEn}
           onSave={handleSettingsSave}

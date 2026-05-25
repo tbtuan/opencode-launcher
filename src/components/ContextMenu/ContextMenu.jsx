@@ -3,7 +3,7 @@ import { cn } from '../../utils/cn'
 import styles from './ContextMenu.module.css'
 import { t } from '../../i18n'
 
-export function ContextMenu({ x, y, visible, type, hasSplits, onClose, onRestart, onCloseTab, onSave, onDeleteCard, onSplitTerminal, onCloseSplitTerminal }) {
+export function ContextMenu({ x, y, visible, type, hasSplits, onClose, onRestart, onCloseTab, onSave, onDeleteCard, onSplitTerminal, onCloseSplitTerminal, onSetDefaultTab }) {
   const menuRef = useRef(null)
 
   const adjustPosition = useCallback(() => {
@@ -39,6 +39,7 @@ export function ContextMenu({ x, y, visible, type, hasSplits, onClose, onRestart
   const isTab = type === 'tab'
   const isEditor = type === 'editor'
   const isCard = type === 'card'
+  const isHome = type === 'home'
 
   return (
     <div
@@ -46,10 +47,13 @@ export function ContextMenu({ x, y, visible, type, hasSplits, onClose, onRestart
       className={cn(styles.contextMenu, !visible && styles.hidden)}
       style={{ left: `${x}px`, top: `${y}px` }}
     >
+      {(isTab || isEditor || isHome || isCard) && (
+        <button onClick={onSetDefaultTab}>{t('ctx.setDefaultTab')}</button>
+      )}
+      {(isTab || isEditor) && <hr className={styles.separator} />}
       {isEditor && (
         <>
           <button onClick={onSave}>{t('ctx.save')}</button>
-          <hr className={styles.separator} />
         </>
       )}
       {isTab && (
@@ -59,14 +63,14 @@ export function ContextMenu({ x, y, visible, type, hasSplits, onClose, onRestart
           ) : (
             <button onClick={onSplitTerminal}>{t('ctx.splitTerminal')}</button>
           )}
-          <hr className={styles.separator} />
           <button onClick={onRestart}>{t('ctx.restart')}</button>
-          <hr className={styles.separator} />
         </>
       )}
-      <button className={styles.danger} onClick={onCloseTab}>
-        {t('ctx.closeTab')}
-      </button>
+      {!isHome && (isTab || isEditor) && (
+        <button className={styles.danger} onClick={onCloseTab}>
+          {t('ctx.closeTab')}
+        </button>
+      )}
       {isCard && (
         <>
           <hr className={styles.separator} />
