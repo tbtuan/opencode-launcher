@@ -126,6 +126,8 @@ function SplitPane({ tab, parentTab, onSplitClose }) {
     suppressIndicator(500)
     requestAnimationFrame(() => {
       if (!fitAddonRef.current || !terminalRef.current) return
+      // Force layout recalculation so fit() reads correct container dimensions
+      containerRef.current?.parentElement?.offsetHeight
       try { fit() } catch {}
       const cols = getCols()
       const rows = getRows()
@@ -138,7 +140,7 @@ function SplitPane({ tab, parentTab, onSplitClose }) {
       }
       focus()
     })
-  }, [fit, getCols, getRows, tab.id, focus, suppressIndicator, fitAddonRef, terminalRef])
+  }, [fit, getCols, getRows, tab.id, focus, suppressIndicator, fitAddonRef, terminalRef, containerRef])
 
   useEffect(() => {
     if (!terminalRef.current) return
@@ -304,6 +306,7 @@ export function TerminalPane({ tab, isActive, onProcessingChange, onStatusChange
     suppressIndicator(500)
     fitRafRef.current = requestAnimationFrame(() => {
       if (!fitAddonRef.current || !terminalRef.current) return
+      containerRef.current?.parentElement?.offsetHeight
       try { fit() } catch {}
       const cols = getCols()
       const rows = getRows()
@@ -316,7 +319,7 @@ export function TerminalPane({ tab, isActive, onProcessingChange, onStatusChange
       }
       focus()
     })
-  }, [fit, getCols, getRows, tab.id, focus, suppressIndicator, fitAddonRef, terminalRef])
+  }, [fit, getCols, getRows, tab.id, focus, suppressIndicator, fitAddonRef, terminalRef, containerRef])
 
   useEffect(() => {
     return () => cancelAnimationFrame(fitRafRef.current)

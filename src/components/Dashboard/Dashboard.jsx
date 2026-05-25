@@ -112,6 +112,14 @@ export function Dashboard({ onOpenTerminal, onCloseTab, onRestartTerminal }) {
     if (tab) onCloseTab(tab.id)
   }, [state.tabs, removeDirectory, onCloseTab])
 
+  // Force re-render after preview-resize so getTerminalDimensions() is re-read
+  const [, forceUpdate] = useState(0)
+  useEffect(() => {
+    const handler = () => forceUpdate(n => n + 1)
+    window.addEventListener('preview-resize', handler)
+    return () => window.removeEventListener('preview-resize', handler)
+  }, [])
+
   const previews = Array.from((() => {
     const map = new Map()
     for (const tab of state.tabs) {

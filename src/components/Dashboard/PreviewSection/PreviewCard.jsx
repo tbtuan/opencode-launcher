@@ -6,7 +6,7 @@ import { logger } from '../../../services/logger'
 
 function PreviewTerminal({ tab, cols, rows }) {
   const containerRef = useRef(null)
-  const terminalRef = usePreviewTerminal(containerRef, cols, rows)
+  const terminalRef = usePreviewTerminal(containerRef)
   const dataBufferRef = useRef([])
 
   useEffect(() => {

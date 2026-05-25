@@ -14,7 +14,7 @@ import { logger } from './services/logger'
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts'
 import { useResizeObserver } from './hooks/useResizeObserver'
 import { loadConfig, checkAndCleanDirectories, persistConfig, persistTabOrder, generateId } from './services/configService'
-import { createPtySession, killPty, clearTerminalDimensions } from './services/terminalService'
+import { createPtySession, killPty, clearTerminalDimensions, getTerminalDimensions } from './services/terminalService'
 import { api } from './services/api'
 import { loadModels } from './services/modelService'
 import { generateTabId } from './services/terminalService'
@@ -362,11 +362,49 @@ function AppInner() {
     if (!tab) return
     if (hasSplits) {
       const childSplits = state.tabs.filter(t => t.parentId === id)
-      childSplits.forEach(s => closeTab(s.id))
+      for (const s of childSplits) {
+        killPty(s.id)
+        clearTerminalDimensions(s.id)
+        removeTab(s.id)
+      }
+      setTimeout(() => {
+        document.dispatchEvent(new CustomEvent('resize-active-tab'))
+        // Direct preview update with estimated dimensions (handles case where
+        // parent terminal is hidden and fit() returns 0)
+        const dims = getTerminalDimensions(id)
+        if (dims && tab.splitRatio) {
+          window.dispatchEvent(new CustomEvent('preview-resize', {
+            detail: {
+              tabId: id,
+              cols: dims.cols,
+              rows: Math.max(5, Math.round(dims.rows / tab.splitRatio)),
+            }
+          }))
+        }
+      }, 0)
     } else {
       handleSplitTerminal(tab)
     }
-  }, [contextMenu.targetId, contextMenu.hasSplits, state.tabs, handleContextClose, handleSplitTerminal, closeTab])
+  }, [contextMenu.targetId, contextMenu.hasSplits, state.tabs, handleContextClose, handleSplitTerminal, killPty, clearTerminalDimensions, removeTab, getTerminalDimensions])
+
+  // Preview update helper: dispatches resize-active-tab AND directly injects
+  // preview-resize with container-based dimensions (works even when parent
+  // terminal is not the active tab)
+  useEffect(() => {
+    const handler = (e) => {
+      const { tabId } = e.detail
+      const container = document.querySelector(`#pane-${tabId}`)
+      if (!container) return
+      const rect = container.getBoundingClientRect()
+      const approxCols = Math.max(40, Math.floor(rect.width / 9.2))
+      const approxRows = Math.max(5, Math.floor(rect.height / 18))
+      window.dispatchEvent(new CustomEvent('preview-resize', {
+        detail: { tabId, cols: approxCols, rows: approxRows }
+      }))
+    }
+    document.addEventListener('split-closed', handler)
+    return () => document.removeEventListener('split-closed', handler)
+  }, [])
 
   const handleCtxRestart = useCallback(async () => {
     const id = contextMenu.targetId
