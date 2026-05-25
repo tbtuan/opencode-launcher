@@ -41,12 +41,15 @@ function AppInner() {
   useEffect(() => {
     async function init() {
       try {
+        performance.mark('init:start')
         const config = await loadConfig()
+        performance.mark('init:config:loaded')
         const { valid: dirs, removed } = await checkAndCleanDirectories(config.directories || [])
         if (removed.length > 0) {
           await api.saveConfig({ ...config, directories: dirs })
         }
         setDirectories(dirs)
+        performance.mark('init:directories:loaded')
 
         const tabOrder = config.tabOrder || []
         const defaultTab = config.defaultTab || 'home'
@@ -60,6 +63,7 @@ function AppInner() {
         setAppLang(lang)
         applyTranslations()
         dispatch({ type: 'SET_LANGUAGE', payload: lang })
+        performance.mark('init:language:set')
 
         // Flags
         try {
@@ -74,6 +78,7 @@ function AppInner() {
           const result = await loadModels()
           setModels(result.models, result.timestamp)
         } catch {}
+        performance.mark('init:models:loaded')
 
         // Migration: old defaultTab format
         const oldDefault = dirs.find(d => d.defaultTab)
@@ -87,18 +92,66 @@ function AppInner() {
 
         // Apply tab order
         if (tabOrder.length > 0) {
-          // Will be applied when tabs are created
           dispatch({ type: 'SET_INITIAL_DATA', payload: { defaultTab: resolvedDefault, savedTabOrder: tabOrder } })
         }
 
         dispatch({ type: 'SET_INITIAL_DATA', payload: { isLoaded: true } })
+        performance.mark('init:done')
+        performance.measure('init:config', 'init:start', 'init:config:loaded')
+        performance.measure('init:directories', 'init:start', 'init:directories:loaded')
+        performance.measure('init:models', 'init:start', 'init:models:loaded')
+        performance.measure('init:total', 'init:start', 'init:done')
+
+        logger.info('App', 'Init complete', { timing: {
+          config: Math.round(performance.getEntriesByName('init:config')[0]?.duration || 0),
+          directories: Math.round(performance.getEntriesByName('init:directories')[0]?.duration || 0),
+          models: Math.round(performance.getEntriesByName('init:models')[0]?.duration || 0),
+          total: Math.round(performance.getEntriesByName('init:total')[0]?.duration || 0),
+        }})
       } catch (e) {
-        logger?.error?.('App', 'init', e?.message)
+        logger?.error?.('App', 'init', e?.stack || e?.message)
         dispatch({ type: 'SET_INITIAL_DATA', payload: { isLoaded: true } })
       }
     }
     init()
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Global error handlers
+  useEffect(() => {
+    const onError = (e) => {
+      logger.error('App', 'Uncaught error', e?.error?.stack || e?.message || String(e))
+    }
+    const onRejection = (e) => {
+      logger.error('App', 'Unhandled rejection', e?.reason?.stack || e?.reason || String(e))
+    }
+    window.addEventListener('error', onError)
+    window.addEventListener('unhandledrejection', onRejection)
+    return () => {
+      window.removeEventListener('error', onError)
+      window.removeEventListener('unhandledrejection', onRejection)
+    }
+  }, [])
+
+  // Main process log forwarding
+  useEffect(() => {
+    const unsub = api.onMainLog?.((entry) => {
+      logger.log(entry.component, entry.level, ...entry.args)
+    })
+    return () => unsub?.()
+  }, [])
+
+  // Auto-save logs to disk on error
+  useEffect(() => {
+    let lastSave = 0
+    const unsub = logger.onError(() => {
+      const now = Date.now()
+      if (now - lastSave < 30000) return
+      lastSave = now
+      const content = logger.formatEntries(logger.getRecent(500))
+      api.saveLogs(content).catch(() => {})
+    })
+    return unsub
+  }, [])
 
   // Auto-launch directories
   const tabsRef = useRef(state.tabs)
@@ -185,7 +238,7 @@ function AppInner() {
         logger.warn('App', 'Create terminal failed', { id, name, cwd, result })
       }
     } catch (e) {
-      logger.error('App', 'Create terminal error', { id, name, cwd, error: e?.message })
+      logger.error('App', 'Create terminal error', { id, name, cwd, error: e?.stack })
       updateTab(id, { status: 'error' })
     }
 
@@ -249,7 +302,7 @@ function AppInner() {
         }
       }
     } catch (e) {
-      logger.error('App', 'closeTab', e?.message)
+      logger.error('App', 'closeTab', e?.stack)
     }
   }, [state.tabs, state.activeId, state.editorTabId, setActiveTab, setEditorTab, removeTab, updateTab])
 
@@ -282,6 +335,7 @@ function AppInner() {
         document.dispatchEvent(new CustomEvent('resize-active-tab'))
       }
     } catch (e) {
+      logger.error('App', 'Split terminal error', { splitId, error: e?.stack })
       updateTab(splitId, { status: 'error' })
     }
   }, [addTab, updateTab])

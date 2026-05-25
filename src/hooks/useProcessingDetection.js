@@ -1,12 +1,23 @@
 import { useRef, useCallback, useEffect } from 'react'
 import {
   IDLE_DEBOUNCE_MS,
-  USER_ACTION_BLOCK_MS,
-  SCROLL_BLOCK_MS,
   INPUT_ECHO_TIMEOUT_MS,
   STARTUP_POLL_INTERVAL_MS,
   STARTUP_FALLBACK_TIMEOUT_MS,
 } from '../utils/constants'
+
+function isMouseTrackingData(data) {
+  if (data.length < 3 || data.length > 20) return false
+  if (data.charCodeAt(0) !== 0x1b) return false
+  if (data[1] !== '[') return false
+
+  // X10 / Normal mode: ESC [ M <b+32> <x+32> <y+32> (exactly 6 bytes)
+  if (data.length === 6 && data[2] === 'M') return true
+
+  // SGR mode: ESC [ <x;y;btn> M/m
+  const last = data[data.length - 1]
+  return (last === 'M' || last === 'm') && data.includes('<')
+}
 
 export function useProcessingDetection({ terminalRef, onProcessingChange, tabId }) {
   const writeIdleTimeoutRef = useRef(null)
@@ -55,16 +66,15 @@ export function useProcessingDetection({ terminalRef, onProcessingChange, tabId 
   }, [])
 
   const handlePtyData = useCallback((data) => {
-    if (isOpenCodeStartingRef.current) {
-      setProcessing()
+    if (isMouseTrackingData(data)) {
       clearTimeout(writeIdleTimeoutRef.current)
       writeIdleTimeoutRef.current = setTimeout(() => setIdle(), IDLE_DEBOUNCE_MS)
       return
     }
-    if (isUserActionRef.current) {
-      if (!writeIdleTimeoutRef.current) {
-        writeIdleTimeoutRef.current = setTimeout(() => setIdle(), IDLE_DEBOUNCE_MS)
-      }
+    if (isOpenCodeStartingRef.current) {
+      setProcessing()
+      clearTimeout(writeIdleTimeoutRef.current)
+      writeIdleTimeoutRef.current = setTimeout(() => setIdle(), IDLE_DEBOUNCE_MS)
       return
     }
     if (data.length > 100 || data.length > recentInputSizeRef.current * 1.5) {

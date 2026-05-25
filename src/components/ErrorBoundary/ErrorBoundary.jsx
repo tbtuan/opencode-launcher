@@ -12,7 +12,7 @@ export class ErrorBoundary extends Component {
   }
 
   componentDidCatch(error, info) {
-    logger.error('ErrorBoundary', error?.message, info?.componentStack)
+    logger.error('ErrorBoundary', error?.stack || error?.message, info?.componentStack)
   }
 
   render() {

@@ -34,7 +34,7 @@ export function ActionsMenu() {
       const result = await refreshModels()
       setModels(result.models, result.timestamp)
     } catch (e) {
-      logger.error('ActionsMenu', 'refreshModels', e?.message)
+      logger.error('ActionsMenu', 'refreshModels', e?.stack)
     }
     setIsLoadingModels(false)
   }, [setModels])

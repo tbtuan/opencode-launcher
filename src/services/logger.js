@@ -4,6 +4,7 @@ const MAX_LOGS = 2000
 let logId = 0
 let entries = []
 const listeners = new Set()
+const errorCallbacks = new Set()
 let bc = null
 
 if (typeof BroadcastChannel !== 'undefined') {
@@ -35,6 +36,10 @@ export const logger = {
     } catch {}
 
     for (const fn of listeners) fn(entry)
+
+    if (level === 'error') {
+      for (const cb of errorCallbacks) cb(entry)
+    }
   },
 
   info(component, ...args) { this.log(component, 'info', ...args) },
@@ -47,7 +52,24 @@ export const logger = {
     return () => listeners.delete(fn)
   },
 
+  onError(cb) {
+    errorCallbacks.add(cb)
+    return () => errorCallbacks.delete(cb)
+  },
+
   getHistory() { return [...entries] },
+
+  getRecent(count) {
+    return entries.slice(-count)
+  },
+
+  formatEntries(list) {
+    return list.map(e => {
+      const time = new Date(e.timestamp).toISOString()
+      const args = e.args.map(a => typeof a === 'string' ? a : JSON.stringify(a)).join(' ')
+      return `[${time}] [${e.level.toUpperCase()}] [${e.component}] ${args}`
+    }).join('\n')
+  },
 
   clear() { entries = [] },
 }

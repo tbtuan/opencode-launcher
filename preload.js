@@ -67,9 +67,19 @@ contextBridge.exposeInMainWorld('api', {
   writeClipboard: (text) => ipcRenderer.invoke('clipboard:write', text),
   checkDirectories: (paths) => ipcRenderer.invoke('fs:checkDirs', paths),
 
+  // Log entries from main process (forwarded to renderer logger)
+  onMainLog: (cb) => {
+    const handler = (_, entry) => cb(entry)
+    ipcRenderer.on('log', handler)
+    return () => ipcRenderer.removeListener('log', handler)
+  },
+
   // Generic IPC for dev tools
   sendToMain: (channel, data) => ipcRenderer.send(channel, data),
 
   // Save text file via dialog
   saveTextFile: (content, defaultName) => ipcRenderer.invoke('dialog:saveText', { content, defaultName }),
+
+  // Auto-save logs on error
+  saveLogs: (content) => ipcRenderer.invoke('log:save', { content }),
 })

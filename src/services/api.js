@@ -5,21 +5,20 @@ import { logger } from './logger'
 
 const isElectron = typeof window !== 'undefined' && window.api
 
-function log(...args) {
-  try { logger.debug('API', ...args) } catch {}
-}
-
 async function invokeIpc(channel, ...args) {
-  log('invokeIpc', channel, args.length, 'args')
   if (isElectron) {
     const method = window.api[channel]
     if (typeof method === 'function') {
-      log('invokeIpc calling', channel)
-      return method(...args)
+      const t0 = performance.now()
+      try {
+        return await method(...args)
+      } finally {
+        const durationMs = Math.round(performance.now() - t0)
+        if (durationMs > 10) {
+          logger.debug('IPC', { channel, durationMs })
+        }
+      }
     }
-    log('invokeIpc NO METHOD for', channel)
-  } else {
-    log('invokeIpc NOT ELECTRON')
   }
   return null
 }
@@ -67,4 +66,6 @@ export const api = {
   writeClipboard: (text) => invokeIpc('writeClipboard', text),
   checkDirectories: (paths) => invokeIpc('checkDirectories', paths),
   readResource: (filename) => invokeIpc('readResource', filename),
+  onMainLog: (cb) => onIpc('onMainLog', cb),
+  saveLogs: (content) => invokeIpc('saveLogs', content),
 }

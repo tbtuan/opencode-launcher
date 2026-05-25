@@ -10,6 +10,7 @@ import { SaveDialog } from '../Modals/SaveDialog'
 import { useApp } from '../../store/AppContext'
 import { getDirNameFromPath } from '../../utils/helpers'
 import { api } from '../../services/api'
+import { logger } from '../../services/logger'
 import { generateId } from '../../services/configService'
 import { t } from '../../i18n'
 
@@ -32,7 +33,9 @@ export function Dashboard({ onOpenTerminal, onCloseTab, onRestartTerminal }) {
       const defaultName = getDirNameFromPath(folderPath)
       setSaveDialogData({ folderPath, defaultName })
       setShowSaveDialog(true)
-    } catch (e) {}
+    } catch (e) {
+      logger.warn('Dashboard', 'openFolder failed', e?.stack || String(e))
+    }
   }, [])
 
   // Drag & Drop for files onto dashboard

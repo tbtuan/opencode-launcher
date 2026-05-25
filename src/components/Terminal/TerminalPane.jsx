@@ -48,7 +48,6 @@ function SplitPane({ tab, parentTab, onSplitClose }) {
       const el = term.element
       if (!el) return
       el.addEventListener('wheel', () => suppressIndicator(500), { passive: true })
-      el.addEventListener('mousemove', () => suppressIndicator(500), { passive: true })
     }, 50)
     const unsubData = term.onData((data) => {
       handleUserInput(data)
@@ -220,7 +219,6 @@ export function TerminalPane({ tab, isActive, onProcessingChange, onStatusChange
       const el = term.element
       if (!el) return
       el.addEventListener('wheel', () => suppressIndicator(500), { passive: true })
-      el.addEventListener('mousemove', () => suppressIndicator(500), { passive: true })
     }, 50)
 
     const unsubData = term.onData((data) => {

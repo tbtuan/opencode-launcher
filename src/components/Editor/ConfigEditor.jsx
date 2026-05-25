@@ -45,7 +45,7 @@ export function ConfigEditor({ tab, isActive, onDirtyChange, onSave }) {
     })
 
     return () => {
-      try { editor.toTextArea() } catch (e) { logger.warn('ConfigEditor', 'cleanup', e?.message) }
+      try { editor.toTextArea() } catch (e) { logger.warn('ConfigEditor', 'cleanup', e?.stack) }
       editorRef.current = null
     }
   }, []) // eslint-disable-line react-hooks/exhaustive-deps

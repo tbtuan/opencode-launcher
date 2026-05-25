@@ -8,6 +8,15 @@ let mainWindow
 let devToolsWindow = null
 const ptyProcesses = new Map() // tabId -> pty process
 
+function mainLog(level, ...args) {
+  try { console[level](`[main]`, ...args) } catch {}
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    try {
+      mainWindow.webContents.send('log', { level, component: 'Main', args, timestamp: Date.now() })
+    } catch {}
+  }
+}
+
 function loadConfig() {
   const configPath = path.join(__dirname, 'config.json')
   try {
@@ -82,13 +91,13 @@ function createWindow() {
   })
 
   mainWindow.on('close', () => {
-    console.log('[main] mainWindow close event triggered')
+    mainLog('info', 'mainWindow close event triggered')
   })
   mainWindow.on('closed', () => {
-    console.log('[main] mainWindow closed, killing', ptyProcesses.size, 'PTYs')
+    mainLog('info', 'mainWindow closed, killing', ptyProcesses.size, 'PTYs')
     // Kill all PTY processes on close
     for (const [id, ptyProc] of ptyProcesses) {
-      console.log('[main] killing PTY', id)
+      mainLog('info', 'killing PTY', id)
       try { ptyProc.kill() } catch (e) {}
     }
     ptyProcesses.clear()
@@ -148,10 +157,10 @@ ipcMain.handle('dialog:saveText', async (_, { content, defaultName }) => {
 
 // ── IPC: Create PTY ──────────────────────────────────────────────────────────
 ipcMain.handle('pty:create', (_, { tabId, cwd, args, autoStart }) => {
-  console.log('[main] pty:create', { tabId, cwd, autoStart })
+  mainLog('info', 'pty:create', { tabId, cwd, autoStart })
   // Kill existing if any
   if (ptyProcesses.has(tabId)) {
-    console.log('[main] pty:create killing existing for', tabId)
+    mainLog('info', 'pty:create killing existing for', tabId)
     try { ptyProcesses.get(tabId).kill() } catch (e) {}
     ptyProcesses.delete(tabId)
   }
@@ -178,7 +187,7 @@ ipcMain.handle('pty:create', (_, { tabId, cwd, args, autoStart }) => {
   })
 
   ptyProc.onExit(({ exitCode }) => {
-    console.log('[main] pty:exit', { tabId, exitCode })
+    mainLog('info', 'pty:exit', { tabId, exitCode })
     if (mainWindow && !mainWindow.isDestroyed()) {
       mainWindow.webContents.send(`pty:exit:${tabId}`, exitCode)
     }
@@ -207,8 +216,8 @@ ipcMain.on('pty:write', (_, { tabId, data }) => {
   const ptyProc = ptyProcesses.get(tabId)
   if (ptyProc) {
     const isExitCmd = data.includes('exit') || data.includes('\x04') || data.includes('\x03')
-    if (isExitCmd) console.log('[main] pty:write EXIT CMD for', tabId, JSON.stringify(data))
-    try { ptyProc.write(data) } catch (e) {}
+    if (isExitCmd) mainLog('info', 'pty:write EXIT CMD for', tabId, JSON.stringify(data))
+    try { ptyProc.write(data) } catch (e) { mainLog('warn', 'pty:write failed for', tabId, e?.message) }
   }
 })
 
@@ -216,13 +225,13 @@ ipcMain.on('pty:write', (_, { tabId, data }) => {
 ipcMain.on('pty:resize', (_, { tabId, cols, rows }) => {
   const ptyProc = ptyProcesses.get(tabId)
   if (ptyProc) {
-    try { ptyProc.resize(cols, rows) } catch (e) {}
+    try { ptyProc.resize(cols, rows) } catch (e) { mainLog('warn', 'pty:resize failed for', tabId, e?.message) }
   }
 })
 
 // ── IPC: Kill PTY ────────────────────────────────────────────────────────────
 ipcMain.handle('pty:kill', (_, { tabId }) => {
-  console.log('[main] pty:kill', { tabId })
+  mainLog('info', 'pty:kill', { tabId })
   const ptyProc = ptyProcesses.get(tabId)
   if (ptyProc) {
     try { ptyProc.kill() } catch (e) {}
@@ -286,7 +295,7 @@ ipcMain.handle('app:openChromeDevTools', () => {
 
 // ── IPC: Restart App ─────────────────────────────────────────────────────────
 ipcMain.handle('app:restart', async (event) => {
-  console.log('[main] app:restart called')
+  mainLog('info', 'app:restart called')
   const checkScript = path.join(__dirname, 'check-build.js')
   if (fs.existsSync(checkScript)) {
     try {
@@ -296,14 +305,17 @@ ipcMain.handle('app:restart', async (event) => {
       await new Promise((resolve, reject) => {
         exec('npm run build', { cwd: __dirname }, (err) => {
           if (err) {
-            console.error('[restart] Build failed:', err.message)
+            mainLog('error', 'Build failed:', err.message)
             reject(err)
           } else {
             event.sender.send('build:status', { status: 'done' })
             resolve()
           }
         })
-      }).catch(() => {})
+      }).catch((err) => {
+        mainLog('error', 'Build failed after retry:', err?.message)
+        event.sender.send('build:status', { status: 'error', error: err?.message })
+      })
     }
   }
   app.relaunch()
@@ -326,7 +338,7 @@ ipcMain.handle('config:opencode:read', () => {
   // Sicherstellen, dass das Verzeichnis existiert
   const dir = path.dirname(configPath)
   if (!fs.existsSync(dir)) {
-    try { fs.mkdirSync(dir, { recursive: true }) } catch (e) {}
+    try { fs.mkdirSync(dir, { recursive: true }) } catch (e) { mainLog('error', 'Failed to create config dir:', dir, e?.message) }
   }
 
   // Datei lesen oder minimales JSON anlegen
@@ -335,7 +347,7 @@ ipcMain.handle('config:opencode:read', () => {
     content = fs.readFileSync(configPath, 'utf-8')
   } else {
     content = JSON.stringify({ "$schema": "https://opencode.ai/config.json" }, null, 2)
-    try { fs.writeFileSync(configPath, content, 'utf-8') } catch (e) {}
+    try { fs.writeFileSync(configPath, content, 'utf-8') } catch (e) { mainLog('error', 'Failed to write default config:', configPath, e?.message) }
   }
 
   return { content, filePath: configPath }
@@ -361,6 +373,19 @@ ipcMain.handle('resource:read', async (_, filename) => {
     return fs.readFileSync(filePath, 'utf-8')
   } catch (e) {
     return null
+  }
+})
+
+// ── IPC: Save logs to disk (auto-save on error) ────────────────────────────────
+ipcMain.handle('log:save', (_, { content }) => {
+  const logDir = path.join(__dirname, 'logs')
+  try {
+    if (!fs.existsSync(logDir)) fs.mkdirSync(logDir, { recursive: true })
+    const filePath = path.join(logDir, `crash-${Date.now()}.log`)
+    fs.writeFileSync(filePath, content, 'utf-8')
+    return { ok: true, filePath }
+  } catch (e) {
+    return { ok: false, error: e.message }
   }
 })
 
