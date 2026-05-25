@@ -89,6 +89,7 @@ function SplitPane({ tab, parentTab, onSplitClose }) {
     if (!term) return
     const unsubKeyHandler = term.attachCustomKeyEventHandler((e) => {
       if (e.type !== 'keydown') return true
+      if (e.ctrlKey && e.key === 'Tab') return false
       if (e.ctrlKey && e.key === 'c' && hasSelection()) {
         writeClipboard(getSelection())
         return false
@@ -264,6 +265,7 @@ export function TerminalPane({ tab, isActive, onProcessingChange, onStatusChange
 
     const unsubKeyHandler = term.attachCustomKeyEventHandler((e) => {
       if (e.type !== 'keydown') return true
+      if (e.ctrlKey && e.key === 'Tab') return false
       if (e.ctrlKey && e.key === 'c' && hasSelection()) {
         writeClipboard(getSelection())
         return false
