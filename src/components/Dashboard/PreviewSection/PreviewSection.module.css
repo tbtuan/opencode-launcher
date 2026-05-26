@@ -103,11 +103,20 @@
 .previewBody {
   display: flex;
   flex-direction: column;
-  height: 280px;
+  height: 320px;
   min-height: 0;
+  overflow: hidden;
+  background: #1e1e1e;
 }
 
 .terminal {
+  flex: 1;
   overflow: hidden;
   min-height: 0;
+  position: relative;
+  background: #1e1e1e;
+}
+
+.terminal :global(.xterm-viewport) {
+  overflow: hidden !important;
 }

@@ -382,6 +382,10 @@ export function TerminalPane({ tab, isActive, onProcessingChange, onStatusChange
         if (cols && rows) {
           setTerminalDimensions(tab.id, cols, rows)
           resizePty(tab.id, cols, rows)
+          // Broadcast so any already-mounted preview can sync to the real PTY size
+          window.dispatchEvent(new CustomEvent('preview-resize', {
+            detail: { tabId: tab.id, cols, rows }
+          }))
         }
       }
     })
@@ -444,14 +448,15 @@ export function TerminalPane({ tab, isActive, onProcessingChange, onStatusChange
         // Directly size previews based on container height and split ratio
         const container = containerRef.current?.parentElement
         if (container) {
+          const cols = getCols()
           const rect = container.getBoundingClientRect()
           const totalRows = Math.floor(rect.height / 18)
           window.dispatchEvent(new CustomEvent('preview-resize', {
-            detail: { tabId: tab.id, cols: 80, rows: Math.max(5, Math.round(totalRows * finalRatio)) }
+            detail: { tabId: tab.id, cols, rows: Math.max(5, Math.round(totalRows * finalRatio)) }
           }))
           splits?.forEach(s => {
             window.dispatchEvent(new CustomEvent('preview-resize', {
-              detail: { tabId: s.id, cols: 80, rows: Math.max(3, Math.round(totalRows * (1 - finalRatio))) }
+              detail: { tabId: s.id, cols, rows: Math.max(3, Math.round(totalRows * (1 - finalRatio))) }
             }))
           })
         }

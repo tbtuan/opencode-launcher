@@ -51,6 +51,13 @@ body { display: flex; flex-direction: column; }
 #preview-grid .xterm-viewport {
   overflow-y: hidden !important;
 }
+#preview-grid .xterm-viewport::-webkit-scrollbar {
+  width: 0 !important;
+  display: none !important;
+}
+#preview-grid .xterm-scrollable-element > .scrollbar {
+  display: none !important;
+}
 
 /* ── CodeMirror Dark Theme ────────────────────────────────────────────── */
 .CodeMirror {

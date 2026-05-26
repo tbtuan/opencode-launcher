@@ -5,7 +5,7 @@ import { t } from '../../../i18n'
 
 function PreviewTerminal({ tab, style }) {
   const containerRef = useRef(null)
-  const terminalRef = usePreviewTerminal(containerRef)
+  const terminalRef = usePreviewTerminal(containerRef, tab.id)
   const dataBufferRef = useRef([])
 
   useEffect(() => {
