@@ -316,80 +316,102 @@ export function TerminalPane({ tab, isActive, onProcessingChange, onStatusChange
   }, [tab.id, terminalRef])
 
   const fitRafRef = useRef(null)
+  const fitRetryRef = useRef(null)
+
+  const performFit = useCallback(() => {
+    if (!fitAddonRef.current || !terminalRef.current) return
+    const containerEl = containerRef.current
+    if (!containerEl || containerEl.clientWidth < 10 || containerEl.clientHeight < 10) return false
+    try { fit() } catch {}
+    const cols = getCols()
+    const rows = getRows()
+    if (cols && rows) {
+      setTerminalDimensions(tab.id, cols, rows)
+      // Defer resizePty by one RAF so xterm's internal resize is committed in the
+      // DOM before SIGWINCH reaches opencode. Reduces race where opencode output
+      // for the old geometry collides with the new xterm grid.
+      requestAnimationFrame(() => {
+        resizePty(tab.id, cols, rows)
+        // Force a full repaint so the DOM renderer flushes any stale cell metrics
+        // that may have been cached while the pane was hidden / font was loading.
+        try { terminalRef.current?.refresh(0, terminalRef.current.rows - 1) } catch {}
+      })
+      window.dispatchEvent(new CustomEvent('preview-resize', {
+        detail: { tabId: tab.id, cols, rows }
+      }))
+    }
+    focus()
+    return true
+  }, [fit, getCols, getRows, tab.id, focus, fitAddonRef, terminalRef, containerRef])
 
   const fitAndResize = useCallback(() => {
     suppressIndicator(500)
-    // Double-RAF ensures the browser has fully painted the now-visible pane
-    // before xterm reads container dimensions. A single RAF can still see 0-width
-    // when the CSS opacity transition hasn't triggered a reflow yet.
-    fitRafRef.current = requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
-        if (!fitAddonRef.current || !terminalRef.current) return
-        // Force layout recalculation
-        containerRef.current?.parentElement?.offsetHeight
-        // Only fit when the container actually has size (guards against opacity:0 mounts)
-        const containerEl = containerRef.current
-        if (!containerEl || containerEl.clientWidth < 10 || containerEl.clientHeight < 10) {
-          // Retry once after a short delay (handles slow CSS transitions)
-          setTimeout(() => {
-            if (!fitAddonRef.current || !terminalRef.current) return
-            try { fit() } catch {}
-            const cols = getCols()
-            const rows = getRows()
-            if (cols && rows) {
-              setTerminalDimensions(tab.id, cols, rows)
-              resizePty(tab.id, cols, rows)
-              window.dispatchEvent(new CustomEvent('preview-resize', {
-                detail: { tabId: tab.id, cols, rows }
-              }))
-            }
-            focus()
-          }, 50)
-          return
-        }
-        try { fit() } catch {}
-        const cols = getCols()
-        const rows = getRows()
-        if (cols && rows) {
-          setTerminalDimensions(tab.id, cols, rows)
-          resizePty(tab.id, cols, rows)
-          window.dispatchEvent(new CustomEvent('preview-resize', {
-            detail: { tabId: tab.id, cols, rows }
-          }))
-        }
-        focus()
+    // Cancel any in-flight RAF / retry to avoid parallel fit chains stomping on
+    // each other when isActive + resize-active-tab trigger at the same time.
+    if (fitRafRef.current) cancelAnimationFrame(fitRafRef.current)
+    if (fitRetryRef.current) clearTimeout(fitRetryRef.current)
+    // Wait for fonts (Cascadia Code) to be ready so cellWidth measurement is stable.
+    // Once-resolved Promise resolves synchronously on subsequent calls — no overhead.
+    document.fonts?.ready?.then(() => {
+      // Double-RAF ensures the browser has fully painted the now-visible pane
+      // before xterm reads container dimensions. A single RAF can still see 0-width
+      // when the CSS opacity transition hasn't triggered a reflow yet.
+      fitRafRef.current = requestAnimationFrame(() => {
+        fitRafRef.current = requestAnimationFrame(() => {
+          // Force layout recalculation
+          containerRef.current?.parentElement?.offsetHeight
+          if (performFit() === false) {
+            // Container not visible yet — retry once after a short delay
+            // (handles slow CSS transitions)
+            fitRetryRef.current = setTimeout(() => { performFit() }, 50)
+          }
+        })
       })
     })
-  }, [fit, getCols, getRows, tab.id, focus, suppressIndicator, fitAddonRef, terminalRef, containerRef])
+  }, [performFit, suppressIndicator, containerRef])
 
   useEffect(() => {
-    return () => cancelAnimationFrame(fitRafRef.current)
+    return () => {
+      if (fitRafRef.current) cancelAnimationFrame(fitRafRef.current)
+      if (fitRetryRef.current) clearTimeout(fitRetryRef.current)
+    }
   }, [])
 
   // Initial fit + resize when terminal first mounts (even for non-active tabs)
   useEffect(() => {
     if (!terminalRef.current) return
-    const raf = requestAnimationFrame(() => {
-      // Only resize when the container is visible and has real dimensions.
-      // Inactive panes are hidden via opacity:0, so clientWidth is 0 here —
-      // skip resizePty in that case to avoid sending 0x0 to the PTY.
-      const containerEl = containerRef.current
-      const hasSize = containerEl && containerEl.clientWidth >= 10 && containerEl.clientHeight >= 10
-      if (hasSize) {
-        fit()
-        const cols = getCols()
-        const rows = getRows()
-        if (cols && rows) {
-          setTerminalDimensions(tab.id, cols, rows)
-          resizePty(tab.id, cols, rows)
-          // Broadcast so any already-mounted preview can sync to the real PTY size
-          window.dispatchEvent(new CustomEvent('preview-resize', {
-            detail: { tabId: tab.id, cols, rows }
-          }))
+    let cancelled = false
+    let rafId = null
+    // Await fonts so the very first fit uses stable cellWidth (avoids cols
+    // mismatch between mount-time fit and later isActive fit).
+    document.fonts?.ready?.then(() => {
+      if (cancelled) return
+      rafId = requestAnimationFrame(() => {
+        // Only resize when the container is visible and has real dimensions.
+        // Inactive panes are hidden via opacity:0 — clientWidth is still non-zero
+        // because they remain in the layout, but guard anyway.
+        const containerEl = containerRef.current
+        const hasSize = containerEl && containerEl.clientWidth >= 10 && containerEl.clientHeight >= 10
+        if (hasSize) {
+          try { fit() } catch {}
+          const cols = getCols()
+          const rows = getRows()
+          if (cols && rows) {
+            setTerminalDimensions(tab.id, cols, rows)
+            resizePty(tab.id, cols, rows)
+            try { terminalRef.current?.refresh(0, terminalRef.current.rows - 1) } catch {}
+            // Broadcast so any already-mounted preview can sync to the real PTY size
+            window.dispatchEvent(new CustomEvent('preview-resize', {
+              detail: { tabId: tab.id, cols, rows }
+            }))
+          }
         }
-      }
+      })
     })
-    return () => cancelAnimationFrame(raf)
+    return () => {
+      cancelled = true
+      if (rafId) cancelAnimationFrame(rafId)
+    }
   }, [terminalRef, fit, getCols, getRows, tab.id]) // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {

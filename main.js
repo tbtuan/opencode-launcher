@@ -7,6 +7,7 @@ const { execSync, exec } = require('child_process')
 let mainWindow
 let devToolsWindow = null
 const ptyProcesses = new Map() // tabId -> pty process
+const ptySizes = new Map() // tabId -> { cols, rows } (cached for no-op resize detection)
 const iconPath = path.join(__dirname, 'public', 'icon.png')
 
 function mainLog(level, ...args) {
@@ -186,6 +187,7 @@ ipcMain.handle('pty:create', (_, { tabId, cwd, args, autoStart }) => {
     mainLog('info', 'pty:create killing existing for', tabId)
     try { ptyProcesses.get(tabId).kill() } catch (e) {}
     ptyProcesses.delete(tabId)
+    ptySizes.delete(tabId)
   }
 
   const shell = resolveShell()
@@ -215,9 +217,11 @@ ipcMain.handle('pty:create', (_, { tabId, cwd, args, autoStart }) => {
       mainWindow.webContents.send(`pty:exit:${tabId}`, exitCode)
     }
     ptyProcesses.delete(tabId)
+    ptySizes.delete(tabId)
   })
 
   ptyProcesses.set(tabId, ptyProc)
+  ptySizes.set(tabId, { cols: 80, rows: 24 })
 
   // Auto-start opencode (skip for split terminals and when explicitly disabled)
   if (autoStart !== false) {
@@ -248,7 +252,12 @@ ipcMain.on('pty:write', (_, { tabId, data }) => {
 ipcMain.on('pty:resize', (_, { tabId, cols, rows }) => {
   const ptyProc = ptyProcesses.get(tabId)
   if (ptyProc) {
-    try { ptyProc.resize(cols, rows) } catch (e) { mainLog('warn', 'pty:resize failed for', tabId, e?.message) }
+    const prev = ptySizes.get(tabId)
+    if (prev && prev.cols === cols && prev.rows === rows) return // skip no-op
+    try {
+      ptyProc.resize(cols, rows)
+      ptySizes.set(tabId, { cols, rows })
+    } catch (e) { mainLog('warn', 'pty:resize failed for', tabId, e?.message) }
   }
 })
 
@@ -259,6 +268,7 @@ ipcMain.handle('pty:kill', (_, { tabId }) => {
   if (ptyProc) {
     try { ptyProc.kill() } catch (e) {}
     ptyProcesses.delete(tabId)
+    ptySizes.delete(tabId)
   }
   return { ok: true }
 })
