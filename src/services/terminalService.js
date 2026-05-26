@@ -31,6 +31,9 @@ export function writeToPty(tabId, data) {
 }
 
 export function resizePty(tabId, cols, rows) {
+  // Guard: never send zero or invalid dimensions to the PTY —
+  // PowerShell/bash silently breaks and stops producing output when resized to 0x0
+  if (!cols || !rows || cols < 10 || rows < 3) return
   api.resizePty(tabId, cols, rows)
 }
 

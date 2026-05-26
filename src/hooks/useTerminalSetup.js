@@ -22,7 +22,14 @@ export function useTerminalSetup(containerRef) {
     const fitAddon = new FitAddon()
     terminal.loadAddon(fitAddon)
     terminal.open(containerRef.current)
-    try { fitAddon.fit() } catch {}
+    // Only fit on initial open if the container already has real dimensions.
+    // Inactive panes are hidden via opacity:0, so clientWidth is 0 at mount time —
+    // calling fit() in that state would set the terminal to 0 columns which breaks
+    // PTY output. The TerminalPane fitAndResize effect handles the correct fit once
+    // the tab becomes active and the container is visible.
+    if (containerRef.current.clientWidth >= 10 && containerRef.current.clientHeight >= 10) {
+      try { fitAddon.fit() } catch {}
+    }
 
     terminalRef.current = terminal
     fitAddonRef.current = fitAddon

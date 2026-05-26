@@ -157,6 +157,27 @@ ipcMain.handle('dialog:saveText', async (_, { content, defaultName }) => {
   }
 })
 
+// ── Shell detection (Windows: prefer pwsh.exe, fallback to powershell.exe) ───
+function resolveShell() {
+  if (process.platform !== 'win32') {
+    return process.platform === 'darwin'
+      ? '/bin/zsh'
+      : (process.env.SHELL || '/bin/bash')
+  }
+  // Try PowerShell 7 (pwsh.exe) first, fall back to built-in Windows PowerShell
+  const candidates = ['pwsh.exe', 'powershell.exe']
+  for (const candidate of candidates) {
+    try {
+      execSync(`where.exe ${candidate}`, { stdio: 'ignore' })
+      mainLog('info', 'resolveShell: using', candidate)
+      return candidate
+    } catch {}
+  }
+  // Last resort
+  mainLog('warn', 'resolveShell: no PowerShell found, falling back to cmd.exe')
+  return 'cmd.exe'
+}
+
 // ── IPC: Create PTY ──────────────────────────────────────────────────────────
 ipcMain.handle('pty:create', (_, { tabId, cwd, args, autoStart }) => {
   mainLog('info', 'pty:create', { tabId, cwd, autoStart })
@@ -167,20 +188,20 @@ ipcMain.handle('pty:create', (_, { tabId, cwd, args, autoStart }) => {
     ptyProcesses.delete(tabId)
   }
 
-  const shell = process.platform === 'win32'
-    ? 'pwsh.exe'
-    : process.platform === 'darwin'
-      ? '/bin/zsh'
-      : process.platform === 'linux'
-        ? (process.env.SHELL || '/bin/bash')
-        : 'sh'
-  const ptyProc = pty.spawn(shell, [], {
-    name: 'xterm-256color',
-    cols: 80,
-    rows: 24,
-    cwd: cwd,
-    env: process.env
-  })
+  const shell = resolveShell()
+  let ptyProc
+  try {
+    ptyProc = pty.spawn(shell, [], {
+      name: 'xterm-256color',
+      cols: 80,
+      rows: 24,
+      cwd: cwd,
+      env: process.env
+    })
+  } catch (e) {
+    mainLog('error', 'pty:create spawn failed', { tabId, shell, error: e?.message })
+    return { ok: false, error: e?.message }
+  }
 
   ptyProc.onData((data) => {
     if (mainWindow && !mainWindow.isDestroyed()) {

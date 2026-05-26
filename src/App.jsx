@@ -236,10 +236,18 @@ function AppInner() {
         logger.info('App', 'Create terminal OK', { id, name, cwd, dirId })
       } else {
         logger.warn('App', 'Create terminal failed', { id, name, cwd, result })
+        updateTab(id, { status: 'error', spawnError: result?.error })
+        // Write the error directly into the xterm so the user sees it
+        document.dispatchEvent(new CustomEvent('pty-spawn-error', {
+          detail: { tabId: id, error: result?.error || 'Shell konnte nicht gestartet werden.' }
+        }))
       }
     } catch (e) {
       logger.error('App', 'Create terminal error', { id, name, cwd, error: e?.stack })
       updateTab(id, { status: 'error' })
+      document.dispatchEvent(new CustomEvent('pty-spawn-error', {
+        detail: { tabId: id, error: e?.message || 'Unbekannter Fehler beim Starten der Shell.' }
+      }))
     }
 
     return id
