@@ -14,6 +14,8 @@ import { logger } from '../../services/logger'
 function SplitPane({ tab, parentTab, onSplitClose }) {
   const containerRef = useRef(null)
   const { updateTab } = useApp()
+  const flushTimeoutRef = useRef(null)
+  const lastFlushRef = useRef(0)
 
   const {
     terminalRef, fitAddonRef, fit, focus, write, clear,
@@ -65,6 +67,16 @@ function SplitPane({ tab, parentTab, onSplitClose }) {
     const unsubData = onPtyData(tab.id, (data) => {
       write(data)
       handlePtyData(data)
+
+      const now = Date.now()
+      if (now - lastFlushRef.current > 1000) {
+        lastFlushRef.current = now
+        clearTimeout(flushTimeoutRef.current)
+        flushTimeoutRef.current = setTimeout(() => {
+          try { terminalRef.current?.refresh(0, terminalRef.current.rows - 1) } catch {}
+        }, 50)
+      }
+
       logger.info('SplitPane', 'forwarding pty-preview-data', { fromTab: tab.id, toTab: tab.id, len: data.length })
       document.dispatchEvent(new CustomEvent('pty-preview-data', {
         detail: { tabId: tab.id, data }
@@ -74,6 +86,7 @@ function SplitPane({ tab, parentTab, onSplitClose }) {
       write(`\r\n\x1b[33m${t('terminal.processExited').replace('{code}', code)}\x1b[0m\r\n`)
     })
     return () => {
+      clearTimeout(flushTimeoutRef.current)
       unsubData?.()
       unsubExit?.()
     }
@@ -138,6 +151,10 @@ function SplitPane({ tab, parentTab, onSplitClose }) {
         if (cols && rows) {
           setTerminalDimensions(tab.id, cols, rows)
           resizePty(tab.id, cols, rows)
+          try { terminalRef.current?.refresh(0, terminalRef.current.rows - 1) } catch {}
+          setTimeout(() => {
+            try { terminalRef.current?.refresh(0, terminalRef.current.rows - 1) } catch {}
+          }, 50)
           window.dispatchEvent(new CustomEvent('preview-resize', {
             detail: { tabId: tab.id, cols, rows }
           }))
@@ -159,6 +176,10 @@ function SplitPane({ tab, parentTab, onSplitClose }) {
         if (cols && rows) {
           setTerminalDimensions(tab.id, cols, rows)
           resizePty(tab.id, cols, rows)
+          try { terminalRef.current?.refresh(0, terminalRef.current.rows - 1) } catch {}
+          setTimeout(() => {
+            try { terminalRef.current?.refresh(0, terminalRef.current.rows - 1) } catch {}
+          }, 50)
         }
       }
     })
@@ -192,6 +213,8 @@ function SplitPane({ tab, parentTab, onSplitClose }) {
 export function TerminalPane({ tab, isActive, onProcessingChange, onStatusChange, splits }) {
   const containerRef = useRef(null)
   const { state, updateTab, removeTab } = useApp()
+  const flushTimeoutRef = useRef(null)
+  const lastFlushRef = useRef(0)
 
   const {
     terminalRef, fitAddonRef, fit, focus, write, clear,
@@ -238,6 +261,16 @@ export function TerminalPane({ tab, isActive, onProcessingChange, onStatusChange
     const unsubData = onPtyData(tab.id, (data) => {
       write(data)
       handlePtyData(data)
+
+      const now = Date.now()
+      if (now - lastFlushRef.current > 1000) {
+        lastFlushRef.current = now
+        clearTimeout(flushTimeoutRef.current)
+        flushTimeoutRef.current = setTimeout(() => {
+          try { terminalRef.current?.refresh(0, terminalRef.current.rows - 1) } catch {}
+        }, 50)
+      }
+
       document.dispatchEvent(new CustomEvent('pty-preview-data', {
         detail: { tabId: tab.id, data }
       }))
@@ -258,6 +291,7 @@ export function TerminalPane({ tab, isActive, onProcessingChange, onStatusChange
     document.addEventListener('pty-spawn-error', onSpawnError)
 
     return () => {
+      clearTimeout(flushTimeoutRef.current)
       unsubData?.()
       unsubExit?.()
       document.removeEventListener('pty-spawn-error', onSpawnError)
@@ -335,6 +369,11 @@ export function TerminalPane({ tab, isActive, onProcessingChange, onStatusChange
         // Force a full repaint so the DOM renderer flushes any stale cell metrics
         // that may have been cached while the pane was hidden / font was loading.
         try { terminalRef.current?.refresh(0, terminalRef.current.rows - 1) } catch {}
+        // Delayed second refresh to catch PTY output that arrives in response to
+        // SIGWINCH but after the initial refresh has already committed.
+        setTimeout(() => {
+          try { terminalRef.current?.refresh(0, terminalRef.current.rows - 1) } catch {}
+        }, 50)
       })
       window.dispatchEvent(new CustomEvent('preview-resize', {
         detail: { tabId: tab.id, cols, rows }
@@ -400,6 +439,9 @@ export function TerminalPane({ tab, isActive, onProcessingChange, onStatusChange
             setTerminalDimensions(tab.id, cols, rows)
             resizePty(tab.id, cols, rows)
             try { terminalRef.current?.refresh(0, terminalRef.current.rows - 1) } catch {}
+            setTimeout(() => {
+              try { terminalRef.current?.refresh(0, terminalRef.current.rows - 1) } catch {}
+            }, 50)
             // Broadcast so any already-mounted preview can sync to the real PTY size
             window.dispatchEvent(new CustomEvent('preview-resize', {
               detail: { tabId: tab.id, cols, rows }
