@@ -6,6 +6,7 @@ import {
   writeToPty, onPtyData, onPtyExit, onOpencodeStarted,
   triggerPaste, onPasteComplete, writeClipboard, resizePty,
   setTerminalDimensions, clearTerminalDimensions, killPty,
+  sendTerminalReset,
 } from '../../services/terminalService'
 import { t } from '../../i18n'
 import { useApp } from '../../store/AppContext'
@@ -52,6 +53,14 @@ function SplitPane({ tab, parentTab, onSplitClose }) {
       handleUserInput(data)
       if (isMouseTrackingData(data)) suppressIndicator(200)
       writeToPty(tab.id, data)
+      // After Ctrl+C, follow up with a terminal-mode soft reset. Crashed TUIs
+      // (vim/less/htop/readline) often leave bracketed-paste, application-cursor
+      // or mouse-tracking modes enabled — PowerShell can't read input correctly
+      // in those modes, so the pane appears to hang. Send reset after a tiny
+      // delay so the shell processes \x03 first.
+      if (data.includes('\x03')) {
+        setTimeout(() => sendTerminalReset(tab.id), 50)
+      }
     })
 
     return () => {

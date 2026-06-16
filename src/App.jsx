@@ -14,7 +14,7 @@ import { logger } from './services/logger'
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts'
 import { useResizeObserver } from './hooks/useResizeObserver'
 import { loadConfig, checkAndCleanDirectories, persistConfig, persistTabOrder, generateId } from './services/configService'
-import { createPtySession, killPty, clearTerminalDimensions, getTerminalDimensions } from './services/terminalService'
+import { createPtySession, killPty, clearTerminalDimensions, getTerminalDimensions, sendTerminalReset } from './services/terminalService'
 import { api } from './services/api'
 import { loadModels } from './services/modelService'
 import { generateTabId } from './services/terminalService'
@@ -511,6 +511,18 @@ function AppInner() {
     document.dispatchEvent(new CustomEvent('save-editor'))
   }, [handleContextClose])
 
+  const handleCtxResetTerminal = useCallback(() => {
+    const id = contextMenu.targetId
+    handleContextClose()
+    if (!id) return
+    logger.info('App', 'Context reset terminal', { id })
+    // Reset the parent terminal and any splits — covers the common case where
+    // the user opens the context menu on the main tab but the hang is in a split.
+    sendTerminalReset(id)
+    const splits = state.tabs.filter(t => t.parentId === id)
+    splits.forEach(s => sendTerminalReset(s.id))
+  }, [contextMenu.targetId, state.tabs, handleContextClose])
+
   const handleDeleteCard = useCallback(() => {
     const id = Number(contextMenu.targetId)
     handleContextClose()
@@ -809,6 +821,7 @@ function AppInner() {
         onSave={handleCtxSave}
         onDeleteCard={handleDeleteCard}
         onSetDefaultTab={handleCtxSetDefaultTab}
+        onResetTerminal={handleCtxResetTerminal}
       />
 
       {/* Settings Dialog */}
