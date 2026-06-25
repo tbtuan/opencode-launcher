@@ -14,7 +14,7 @@ import { logger } from './services/logger'
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts'
 import { useResizeObserver } from './hooks/useResizeObserver'
 import { loadConfig, checkAndCleanDirectories, persistConfig, persistTabOrder, generateId } from './services/configService'
-import { createPtySession, killPty, clearTerminalDimensions, getTerminalDimensions, sendTerminalReset } from './services/terminalService'
+import { createPtySession, killPty, clearTerminalDimensions, getTerminalDimensions } from './services/terminalService'
 import { api } from './services/api'
 import { loadModels } from './services/modelService'
 import { generateTabId } from './services/terminalService'
@@ -516,11 +516,13 @@ function AppInner() {
     handleContextClose()
     if (!id) return
     logger.info('App', 'Context reset terminal', { id })
-    // Reset the parent terminal and any splits — covers the common case where
-    // the user opens the context menu on the main tab but the hang is in a split.
-    sendTerminalReset(id)
-    const splits = state.tabs.filter(t => t.parentId === id)
-    splits.forEach(s => sendTerminalReset(s.id))
+    // Dispatch a Custom Event — TerminalPane listens and calls write(TERMINAL_RESET_SEQUENCE)
+    // directly into its xterm instance. We must NOT write to PTY stdin here because
+    // TUI programs (opencode Go binary) segfault when receiving unexpected escape sequences.
+    const tabIds = [id, ...state.tabs.filter(t => t.parentId === id).map(t => t.id)]
+    tabIds.forEach(tabId => {
+      document.dispatchEvent(new CustomEvent('reset-terminal', { detail: { tabId } }))
+    })
   }, [contextMenu.targetId, state.tabs, handleContextClose])
 
   const handleDeleteCard = useCallback(() => {
