@@ -511,6 +511,20 @@ function AppInner() {
     document.dispatchEvent(new CustomEvent('save-editor'))
   }, [handleContextClose])
 
+  const handleCtxResetTerminal = useCallback(() => {
+    const id = contextMenu.targetId
+    handleContextClose()
+    if (!id) return
+    logger.info('App', 'Context reset terminal', { id })
+    // Dispatch a Custom Event — TerminalPane listens and calls write(TERMINAL_RESET_SEQUENCE)
+    // directly into its xterm instance. We must NOT write to PTY stdin here because
+    // TUI programs (opencode Go binary) segfault when receiving unexpected escape sequences.
+    const tabIds = [id, ...state.tabs.filter(t => t.parentId === id).map(t => t.id)]
+    tabIds.forEach(tabId => {
+      document.dispatchEvent(new CustomEvent('reset-terminal', { detail: { tabId } }))
+    })
+  }, [contextMenu.targetId, state.tabs, handleContextClose])
+
   const handleDeleteCard = useCallback(() => {
     const id = Number(contextMenu.targetId)
     handleContextClose()
@@ -809,6 +823,7 @@ function AppInner() {
         onSave={handleCtxSave}
         onDeleteCard={handleDeleteCard}
         onSetDefaultTab={handleCtxSetDefaultTab}
+        onResetTerminal={handleCtxResetTerminal}
       />
 
       {/* Settings Dialog */}

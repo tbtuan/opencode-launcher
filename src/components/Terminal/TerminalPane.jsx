@@ -6,6 +6,7 @@ import {
   writeToPty, onPtyData, onPtyExit, onOpencodeStarted,
   triggerPaste, onPasteComplete, writeClipboard, resizePty,
   setTerminalDimensions, clearTerminalDimensions, killPty,
+  TERMINAL_RESET_SEQUENCE,
 } from '../../services/terminalService'
 import { t } from '../../i18n'
 import { useApp } from '../../store/AppContext'
@@ -52,8 +53,22 @@ function SplitPane({ tab, parentTab, onSplitClose }) {
     }, 50)
     const unsubData = term.onData((data) => {
       handleUserInput(data)
-      if (isMouseTrackingData(data)) suppressIndicator(200)
+      if (isMouseTrackingData(data)) {
+        suppressIndicator(200)
+        if (term.modes?.mouseTrackingMode === 'none') return
+      }
       writeToPty(tab.id, data)
+      // After Ctrl+C, follow up with a terminal-mode soft reset. Crashed TUIs
+      // (vim/less/htop/readline) often leave bracketed-paste, application-cursor
+      // or mouse-tracking modes enabled — PowerShell can't read input correctly
+      // in those modes, so the pane appears to hang. Write the reset directly into
+      // xterm (to clear xterm's internal mode state) AND send it to the PTY.
+      if (data.includes('\x03')) {
+        // After Ctrl+C: reset xterm-side modes only (write directly into xterm).
+        // Do NOT send to PTY — raw escape sequences on PTY stdin crash TUI programs
+        // (e.g. opencode Go binary segfaults when receiving unexpected escape input).
+        setTimeout(() => write(TERMINAL_RESET_SEQUENCE), 50)
+      }
     })
 
     return () => {
@@ -83,6 +98,7 @@ function SplitPane({ tab, parentTab, onSplitClose }) {
       }))
     })
     const unsubExit = onPtyExit(tab.id, (code) => {
+      write(TERMINAL_RESET_SEQUENCE)
       write(`\r\n\x1b[33m${t('terminal.processExited').replace('{code}', code)}\x1b[0m\r\n`)
     })
     return () => {
@@ -91,6 +107,17 @@ function SplitPane({ tab, parentTab, onSplitClose }) {
       unsubExit?.()
     }
   }, [tab.id, write, handlePtyData, parentTab.id])
+
+  // Listen for manual "reset terminal" trigger from context menu.
+  // Writes the reset sequence directly into xterm (not PTY) to clear stuck modes.
+  useEffect(() => {
+    const handler = (e) => {
+      if (e.detail?.tabId !== tab.id) return
+      write(TERMINAL_RESET_SEQUENCE)
+    }
+    document.addEventListener('reset-terminal', handler)
+    return () => document.removeEventListener('reset-terminal', handler)
+  }, [tab.id, write])
 
   useEffect(() => {
     const unsub = onOpencodeStarted(tab.id, () => {
@@ -246,7 +273,15 @@ export function TerminalPane({ tab, isActive, onProcessingChange, onStatusChange
 
     const unsubData = term.onData((data) => {
       handleUserInput(data)
-      if (isMouseTrackingData(data)) suppressIndicator(200)
+      if (isMouseTrackingData(data)) {
+        suppressIndicator(200)
+        // Only forward mouse-tracking escape sequences to the PTY when xterm
+        // itself has mouse tracking enabled (i.e. a TUI program like opencode
+        // activated it via ESC[?1000h / ?1002h / ?1003h). At the bare shell
+        // prompt, mouseTrackingMode is "none" — forwarding there prints the
+        // raw escape sequence as literal text (e.g. [555;37;9M).
+        if (term.modes?.mouseTrackingMode === 'none') return
+      }
       writeToPty(tab.id, data)
     })
 
@@ -277,6 +312,11 @@ export function TerminalPane({ tab, isActive, onProcessingChange, onStatusChange
     })
 
     const unsubExit = onPtyExit(tab.id, (code) => {
+      // Reset xterm's internal mode state (mouseTrackingMode, bracketedPaste,
+      // applicationCursorKeys, ...) so that after the shell exits no stale modes
+      // are left active. Writing to xterm directly resets xterm-side; the PTY
+      // is gone so we skip the PTY write here.
+      write(TERMINAL_RESET_SEQUENCE)
       write(`\r\n\x1b[33m${t('terminal.processExited').replace('{code}', code)}\x1b[0m\r\n`)
       onStatusChange?.(tab.id, 'stopped')
     })
@@ -297,6 +337,17 @@ export function TerminalPane({ tab, isActive, onProcessingChange, onStatusChange
       document.removeEventListener('pty-spawn-error', onSpawnError)
     }
   }, [tab.id, write, handlePtyData, onStatusChange])
+
+  // Listen for manual "reset terminal" trigger from context menu.
+  // Writes the reset sequence directly into xterm (not PTY) to clear stuck modes.
+  useEffect(() => {
+    const handler = (e) => {
+      if (e.detail?.tabId !== tab.id) return
+      write(TERMINAL_RESET_SEQUENCE)
+    }
+    document.addEventListener('reset-terminal', handler)
+    return () => document.removeEventListener('reset-terminal', handler)
+  }, [tab.id, write])
 
   // OpenCode started signal
   useEffect(() => {

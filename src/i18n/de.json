@@ -21,6 +21,7 @@
   "ctx.setDefaultTab": "Als Start-Tab festlegen",
   "ctx.splitTerminal": "Separates Terminal öffnen",
   "ctx.closeSplitTerminal": "Separates Terminal schließen",
+  "ctx.resetTerminal": "Terminal zurücksetzen",
   "ctx.restart": "Neustart",
   "ctx.closeTab": "Schließen",
   "ctx.removeCard": "Kachel entfernen",

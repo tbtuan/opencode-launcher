@@ -30,6 +30,26 @@ export function writeToPty(tabId, data) {
   api.writePty(tabId, data)
 }
 
+// Escape sequences that disable terminal modes commonly left enabled by crashed
+// TUIs (vim/less/htop/opencode). Write this directly into xterm.js (via
+// terminal.write()) to reset xterm's internal mode state:
+//   mouseTrackingMode → "none", bracketedPasteMode → false,
+//   applicationCursorKeysMode → false, alternate screen → main buffer, etc.
+//
+// IMPORTANT: Do NOT send this to the PTY stdin (writeToPty). Programs like
+// opencode (Go TUI) will crash with a segfault if they receive raw escape
+// sequences on stdin that they don't expect.
+export const TERMINAL_RESET_SEQUENCE =
+  '\x1b[?2004l' +  // bracketed paste off
+  '\x1b[?1l' +     // application cursor keys off
+  '\x1b[?1000l' +  // X10 mouse tracking off
+  '\x1b[?1002l' +  // cell motion mouse tracking off
+  '\x1b[?1003l' +  // all motion mouse tracking off
+  '\x1b[?1006l' +  // SGR mouse mode off
+  '\x1b[?1049l' +  // alternate screen buffer off
+  '\x1b[?25h' +    // cursor visible
+  '\x1b='          // numeric keypad mode off
+
 export function resizePty(tabId, cols, rows) {
   // Guard: never send zero or invalid dimensions to the PTY —
   // PowerShell/bash silently breaks and stops producing output when resized to 0x0
