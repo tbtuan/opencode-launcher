@@ -17,6 +17,11 @@ export function useTerminalSetup(containerRef) {
       lineHeight: 1.3,
       cursorBlink: true,
       scrollback: 5000,
+      linkHandler: {
+        activate: (event, text) => {
+          window.api?.openExternal?.(text)
+        },
+      },
     })
 
     const fitAddon = new FitAddon()

@@ -67,6 +67,9 @@ contextBridge.exposeInMainWorld('api', {
   writeClipboard: (text) => ipcRenderer.invoke('clipboard:write', text),
   checkDirectories: (paths) => ipcRenderer.invoke('fs:checkDirs', paths),
 
+  // Open a link in the system default browser (no new Electron window)
+  openExternal: (url) => ipcRenderer.invoke('shell:openExternal', url),
+
   // Log entries from main process (forwarded to renderer logger)
   onMainLog: (cb) => {
     const handler = (_, entry) => cb(entry)

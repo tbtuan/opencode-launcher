@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, clipboard, dialog, Menu } = require('electron')
+const { app, BrowserWindow, ipcMain, clipboard, dialog, Menu, shell } = require('electron')
 const path = require('path')
 const fs = require('fs')
 const pty = require('node-pty')
@@ -434,6 +434,21 @@ ipcMain.on('terminal-paste', (event, { tabId }) => {
 
 // ── IPC: Clipboard Write (for Copy) ──────────────────────────────────────────
 ipcMain.handle('clipboard:write', (_, text) => clipboard.writeText(text, 'clipboard'))
+
+// ── IPC: Open external link in the system default browser ───────────────────
+ipcMain.handle('shell:openExternal', (_, url) => {
+  if (typeof url !== 'string') return { ok: false, error: 'no url' }
+  try {
+    const parsed = new URL(url)
+    if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+      return { ok: false, error: 'disallowed protocol' }
+    }
+    shell.openExternal(parsed.toString())
+    return { ok: true }
+  } catch {
+    return { ok: false, error: 'invalid url' }
+  }
+})
 
 // ── IPC: Check which directories still exist ────────────────────────────────
 ipcMain.handle('fs:checkDirs', async (_, paths) => {

@@ -38,6 +38,7 @@ beforeEach(() => {
     writeClipboard: vi.fn(() => Promise.resolve()),
     checkDirectories: vi.fn(() => Promise.resolve([])),
     readResource: vi.fn(() => Promise.resolve('')),
+    openExternal: vi.fn(() => Promise.resolve({ ok: true })),
 
   }
 })
