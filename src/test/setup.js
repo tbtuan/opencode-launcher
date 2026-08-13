@@ -23,4 +23,5 @@ window.api = {
   writeClipboard: () => Promise.resolve(),
   checkDirectories: () => Promise.resolve([]),
   readResource: () => Promise.resolve(''),
+  openExternal: () => Promise.resolve({ ok: true }),
 }
