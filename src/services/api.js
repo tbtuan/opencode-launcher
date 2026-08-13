@@ -47,6 +47,7 @@ export const api = {
   loadConfig: () => invokeIpc('loadConfig'),
   saveConfig: (config) => invokeIpc('saveConfig', config),
   openFolder: (lang) => invokeIpc('openFolder', lang),
+  getPathForFile: (file) => invokeIpc('getPathForFile', file),
   listModels: () => invokeIpc('listModels'),
   refreshModels: () => invokeIpc('refreshModels'),
   createPty: (tabId, cwd, args, autoStart = true) => invokeIpc('createPty', tabId, cwd, args, autoStart),

@@ -38,7 +38,7 @@ export function Dashboard({ onOpenTerminal, onCloseTab, onRestartTerminal }) {
     }
   }, [])
 
-  // Drag & Drop for files onto dashboard
+  // Drag & Drop for folders onto dashboard
   useEffect(() => {
     const el = dashboardRef.current
     if (!el) return
@@ -57,15 +57,20 @@ export function Dashboard({ onOpenTerminal, onCloseTab, onRestartTerminal }) {
       setDragCounter(c => Math.max(0, c - 1))
     }
 
-    const handleDrop = (e) => {
+    const handleDrop = async (e) => {
       e.preventDefault()
       setDragCounter(0)
       const file = e.dataTransfer.files[0]
       if (!file) return
-      const folderPath = file.path
-      const defaultName = getDirNameFromPath(folderPath)
-      setSaveDialogData({ folderPath, defaultName })
-      setShowSaveDialog(true)
+      try {
+        const folderPath = await api.getPathForFile(file)
+        if (!folderPath) return
+        const defaultName = getDirNameFromPath(folderPath)
+        setSaveDialogData({ folderPath, defaultName })
+        setShowSaveDialog(true)
+      } catch (error) {
+        logger.warn('Dashboard', 'Could not resolve dropped folder path', error?.stack || String(error))
+      }
     }
 
     el.addEventListener('dragenter', handleDragEnter)
@@ -216,5 +221,4 @@ export function Dashboard({ onOpenTerminal, onCloseTab, onRestartTerminal }) {
     </div>
   )
 }
-
 

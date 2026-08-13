@@ -21,6 +21,7 @@ beforeEach(() => {
     loadConfig: vi.fn(() => Promise.resolve({ directories: [] })),
     saveConfig: vi.fn(() => Promise.resolve({ ok: true })),
     openFolder: vi.fn(() => Promise.resolve(null)),
+    getPathForFile: vi.fn(() => Promise.resolve('/path/to/dropped-folder')),
     listModels: vi.fn(() => Promise.resolve({ models: [], timestamp: null })),
     refreshModels: vi.fn(() => Promise.resolve({ models: [], timestamp: null })),
     createPty: vi.fn(() => Promise.resolve({ ok: true, pid: 12345 })),
@@ -159,6 +160,14 @@ describe('api IPC bridge', () => {
     expect(window.api.openFolder).toHaveBeenCalledOnce()
     expect(window.api.openFolder).toHaveBeenCalledWith(lang)
     expect(result).toBeNull()
+  })
+
+  it('api.getPathForFile(file) calls window.api.getPathForFile(file)', async () => {
+    const file = new File([], 'dropped-folder')
+    const result = await api.getPathForFile(file)
+    expect(window.api.getPathForFile).toHaveBeenCalledOnce()
+    expect(window.api.getPathForFile).toHaveBeenCalledWith(file)
+    expect(result).toBe('/path/to/dropped-folder')
   })
 
   it('api.listModels() calls window.api.listModels()', async () => {

@@ -1,4 +1,4 @@
-const { contextBridge, ipcRenderer } = require('electron')
+const { contextBridge, ipcRenderer, webUtils } = require('electron')
 
 contextBridge.exposeInMainWorld('api', {
   // Config
@@ -7,6 +7,7 @@ contextBridge.exposeInMainWorld('api', {
 
   // Dialog
   openFolder: (lang) => ipcRenderer.invoke('dialog:openFolder', lang),
+  getPathForFile: (file) => webUtils.getPathForFile(file),
 
   // Models
   listModels:    () => ipcRenderer.invoke('models:list'),

@@ -1,10 +1,11 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render } from '@testing-library/react'
+import { render, fireEvent, waitFor } from '@testing-library/react'
 import { Dashboard } from '../components/Dashboard/Dashboard'
 
 const mockAppState = {
   savedDirectories: [],
   tabs: [],
+  availableModels: [],
   modelsTimestamp: null,
   flagDe: '',
   flagEn: '',
@@ -32,6 +33,7 @@ vi.mock('../services/configService', () => ({
 vi.mock('../services/api', () => ({
   api: {
     openFolder: vi.fn(() => Promise.resolve(null)),
+    getPathForFile: vi.fn(() => Promise.resolve('/projects/dropped-folder')),
     readResource: vi.fn(() => Promise.resolve('')),
   }
 }))
@@ -68,6 +70,21 @@ describe('Dashboard', () => {
       <Dashboard onOpenTerminal={vi.fn()} onCloseTab={vi.fn()} onRestartTerminal={vi.fn()} />
     )
     expect(container.querySelector('#preview-section')).toBeFalsy()
+  })
+
+  it('opens the add-directory dialog when a folder is dropped', async () => {
+    const { container } = render(
+      <Dashboard onOpenTerminal={vi.fn()} onCloseTab={vi.fn()} onRestartTerminal={vi.fn()} />
+    )
+
+    fireEvent.drop(container.querySelector('#dashboard'), {
+      dataTransfer: { files: [new File([], 'dropped-folder')] },
+    })
+
+    await waitFor(() => {
+      expect(container.querySelector('#save-dialog-overlay')).toBeTruthy()
+    })
+    expect(container.querySelector('#save-dialog-overlay')).toHaveTextContent('/projects/dropped-folder')
   })
 
   it('shows preview cards for running non-split terminal tabs', () => {

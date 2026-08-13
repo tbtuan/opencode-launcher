@@ -5,6 +5,7 @@ window.api = {
   loadConfig: () => Promise.resolve({ directories: [] }),
   saveConfig: () => Promise.resolve({ ok: true }),
   openFolder: () => Promise.resolve(null),
+  getPathForFile: () => Promise.resolve(null),
   listModels: () => Promise.resolve({ models: [], timestamp: null }),
   refreshModels: () => Promise.resolve({ models: [], timestamp: null }),
   createPty: () => Promise.resolve({ ok: true, pid: 12345 }),
