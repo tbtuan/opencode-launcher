@@ -10,6 +10,7 @@ A tab-based Electron launcher for managing multiple OpenCode terminal sessions, 
 - **Directory Cards** – Saved directories displayed as cards with name, path, optional description, auto-launch badge, and per-directory model selector
 - **Drag & Drop Reordering** – Rearrange cards on the dashboard by dragging
 - **Inline Card Editor** – Edit name, description, auto-launch, and session continuation settings per card without leaving the dashboard
+- **Per-Card Setup Command** – In a card's settings, configure an optional shell command to run before OpenCode on launch or restart. It runs in the card directory and in the same shell; OpenCode starts only if setup succeeds. Use `source ./setup.sh` on Linux/macOS or `. ./setup.ps1` in PowerShell to preserve environment variables. Leave the field empty to start OpenCode directly. Separate split terminals are unchanged.
 - **Model Selector** – Choose a preferred AI model per directory, grouped by provider (OpenCode, GitHub Copilot, LiteLLM)
 - **Live Status Buttons** – Play, Stop, and Restart buttons that sync with running terminal state
 - **Preview Terminals** – Read-only mini xterm.js previews (font size 6) of all running terminals shown below the cards; fixed 280px height with FitAddon; click any preview to activate the full terminal

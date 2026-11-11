@@ -22,8 +22,8 @@ export function generateTabId() {
   return `tab-${tabCounter}`
 }
 
-export async function createPtySession(tabId, cwd, args, autoStart = true) {
-  return api.createPty(tabId, cwd, args, autoStart)
+export async function createPtySession(tabId, cwd, args, autoStart = true, preStartCommand = '') {
+  return api.createPty(tabId, cwd, args, autoStart, preStartCommand)
 }
 
 export function writeToPty(tabId, data) {

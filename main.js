@@ -3,6 +3,7 @@ const path = require('path')
 const fs = require('fs')
 const pty = require('node-pty')
 const { execSync, exec } = require('child_process')
+const { buildStartupCommand } = require('./startup-command')
 
 let mainWindow
 let devToolsWindow = null
@@ -180,7 +181,7 @@ function resolveShell() {
 }
 
 // ── IPC: Create PTY ──────────────────────────────────────────────────────────
-ipcMain.handle('pty:create', (_, { tabId, cwd, args, autoStart }) => {
+ipcMain.handle('pty:create', (_, { tabId, cwd, args, autoStart, preStartCommand }) => {
   mainLog('info', 'pty:create', { tabId, cwd, autoStart })
   // Kill existing if any
   if (ptyProcesses.has(tabId)) {
@@ -226,8 +227,8 @@ ipcMain.handle('pty:create', (_, { tabId, cwd, args, autoStart }) => {
   // Auto-start opencode (skip for split terminals and when explicitly disabled)
   if (autoStart !== false) {
     setTimeout(() => {
-      if (ptyProcesses.has(tabId)) {
-        const cmd = args ? `opencode ${args}\r` : 'opencode\r'
+      if (ptyProcesses.get(tabId) === ptyProc) {
+        const cmd = buildStartupCommand(shell, args, preStartCommand)
         ptyProc.write(cmd)
         // Signal renderer that opencode is starting
         mainWindow?.webContents.send(`opencode:started:${tabId}`)

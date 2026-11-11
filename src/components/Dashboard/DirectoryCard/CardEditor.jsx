@@ -6,6 +6,7 @@ import { t } from '../../../i18n'
 export function CardEditor({ dir, onSave, onCancel }) {
   const [name, setName] = useState(dir.name)
   const [description, setDescription] = useState(dir.description || '')
+  const [preStartCommand, setPreStartCommand] = useState(dir.preStartCommand || '')
   const [startOnLaunch, setStartOnLaunch] = useState(dir.startOnLaunch || false)
   const [continueSession, setContinueSession] = useState(dir.continueSession || false)
   const nameRef = useRef(null)
@@ -13,6 +14,7 @@ export function CardEditor({ dir, onSave, onCancel }) {
   useEffect(() => {
     setName(dir.name)
     setDescription(dir.description || '')
+    setPreStartCommand(dir.preStartCommand || '')
     setStartOnLaunch(dir.startOnLaunch || false)
     setContinueSession(dir.continueSession || false)
   }, [dir])
@@ -26,10 +28,11 @@ export function CardEditor({ dir, onSave, onCancel }) {
     onSave?.({
       name: name.trim() || dir.name,
       description: description.trim(),
+      preStartCommand: preStartCommand.trim(),
       startOnLaunch,
       continueSession,
     })
-  }, [name, description, startOnLaunch, continueSession, dir.name, onSave])
+  }, [name, description, preStartCommand, startOnLaunch, continueSession, dir.name, onSave])
 
   const handleKeyDown = useCallback((e) => {
     if (e.key === 'Enter') { e.preventDefault(); handleSave() }
@@ -57,6 +60,18 @@ export function CardEditor({ dir, onSave, onCancel }) {
           onChange={(e) => setDescription(e.target.value)}
           onKeyDown={handleKeyDown}
         />
+      </div>
+      <div className={styles.editorRow}>
+        <label htmlFor={`pre-start-${dir._id}`}>{t('editor.preStartCommand')}</label>
+        <input
+          id={`pre-start-${dir._id}`}
+          type="text"
+          placeholder={t('editor.preStartCommandPlaceholder')}
+          value={preStartCommand}
+          onChange={(e) => setPreStartCommand(e.target.value)}
+          onKeyDown={handleKeyDown}
+        />
+        <div className={styles.editorHint}>{t('editor.preStartCommandHint')}</div>
       </div>
       <div className={`${styles.editorRow} ${styles.checkRow}`}>
         <input

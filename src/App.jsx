@@ -166,7 +166,7 @@ function AppInner() {
           dir.model ? `--model ${dir.model}` : '',
           dir.continueSession ? '--continue' : '',
         ].filter(Boolean).join(' ')
-        await createTab(dir.name, dir.path, args, dir._id)
+        await createTab(dir.name, dir.path, args, dir._id, -1, dir.preStartCommand)
       }
       // Activate default tab
       const defaultDir = state.savedDirectories.find(d => d.path === state.defaultTab)
@@ -178,7 +178,7 @@ function AppInner() {
           setActiveTab(existingTab.id)
         } else {
           const args = defaultDir.continueSession ? '--continue' : ''
-          const id = await createTab(defaultDir.name, defaultDir.path, args, defaultDir._id)
+          const id = await createTab(defaultDir.name, defaultDir.path, args, defaultDir._id, -1, defaultDir.preStartCommand)
           setActiveTab(id)
         }
       } else if (state.tabs.length > 0) {
@@ -208,7 +208,7 @@ function AppInner() {
   }, [state.isLoaded]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Tab creation
-  const createTab = useCallback(async (name, cwd, args = '', dirId = null, insertIdx = -1) => {
+  const createTab = useCallback(async (name, cwd, args = '', dirId = null, insertIdx = -1, preStartCommand = '') => {
     const id = generateTabId()
     const tab = {
       id,
@@ -228,7 +228,7 @@ function AppInner() {
     }
 
     try {
-      const result = await createPtySession(id, cwd, args)
+      const result = await createPtySession(id, cwd, args, true, preStartCommand)
       if (result?.ok) {
         updateTab(id, { status: 'running', isProcessing: () => true })
         recalcDisplayNames(cwd)
@@ -267,7 +267,7 @@ function AppInner() {
       dir.continueSession ? '--continue' : '',
     ].filter(Boolean).join(' ')
     try {
-      const id = await createTab(dir.name, dir.path, args, dir._id)
+      const id = await createTab(dir.name, dir.path, args, dir._id, -1, dir.preStartCommand)
       logger.info('App', 'Open terminal for dir', { dirId: dir._id, name: dir.name, tabId: id })
       setActiveTab(id)
     } finally {
@@ -359,7 +359,7 @@ function AppInner() {
       dir.model ? `--model ${dir.model}` : '',
       dir.continueSession ? '--continue' : '',
     ].filter(Boolean).join(' ')
-    const newId = await createTab(dir.name, dir.path, args, dir._id, idx)
+    const newId = await createTab(dir.name, dir.path, args, dir._id, idx, dir.preStartCommand)
     if (wasActive) {
       setActiveTab(newId)
     }

@@ -203,6 +203,12 @@
 
 .editorRow input[type="text"]:focus { border-color: var(--accent); }
 
+.editorHint {
+  font-size: 11px;
+  color: var(--text-dim);
+  line-height: 1.4;
+}
+
 .checkRow {
   flex-direction: row;
   align-items: center;

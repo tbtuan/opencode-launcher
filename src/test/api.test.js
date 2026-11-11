@@ -59,11 +59,22 @@ describe('api IPC bridge', () => {
     expect(result).toEqual({ ok: true })
   })
 
-  it('api.createPty(tabId, cwd, args) calls window.api.createPty(tabId, cwd, args, true) with autoStart default', async () => {
+  it('api.createPty uses autoStart and empty setup defaults', async () => {
     const result = await api.createPty(tabId, cwd, args)
     expect(window.api.createPty).toHaveBeenCalledOnce()
-    expect(window.api.createPty).toHaveBeenCalledWith(tabId, cwd, args, true)
+    expect(window.api.createPty).toHaveBeenCalledWith(tabId, cwd, args, true, '')
     expect(result).toEqual({ ok: true, pid: 12345 })
+  })
+
+  it('forwards a configured setup command through the PTY service and API', async () => {
+    const { createPtySession } = await import('../services/terminalService')
+    await createPtySession(tabId, cwd, '--continue', true, 'source ./setup.sh')
+    expect(window.api.createPty).toHaveBeenCalledWith(tabId, cwd, '--continue', true, 'source ./setup.sh')
+  })
+
+  it('preserves disabled autoStart for split terminals', async () => {
+    await api.createPty(tabId, cwd, '', false)
+    expect(window.api.createPty).toHaveBeenCalledWith(tabId, cwd, '', false, '')
   })
 
   it('api.killPty(tabId) calls window.api.killPty(tabId) with tabId', async () => {
