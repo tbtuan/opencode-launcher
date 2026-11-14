@@ -28,7 +28,7 @@ A tab-based Electron launcher for managing multiple OpenCode terminal sessions, 
   - `Ctrl+Tab` / `Ctrl+Shift+Tab` – Cycle through tabs (includes Home tab)
   - `Ctrl+S` – Save editor tab (config file)
   - `Escape` – Close dialogs, context menus
-- **Copy & Paste** – `Ctrl+C` copies terminal selection to clipboard; `Ctrl+V` pastes clipboard content into the terminal
+- **Copy & Paste** – `Ctrl+C` copies terminal selection to clipboard; `Ctrl+V` pastes clipboard content into the terminal. Clipboard images are forwarded to OpenCode as `Ctrl+V` so they attach as an `[Image 1]` attachment
 - **Auto-Resize** – Terminal and PTY automatically resize on window resize, tab switch, or split close
 - **Processing Detection** – Terminal indicator shows processing state (green = idle, yellow = processing > 100 bytes output, red = error, gray = stopped). Suppressed during tab switch (500ms), mouse movement/scroll (200ms) to prevent resize redraws or app responses from falsely triggering the indicator. Mouse tracking data is filtered at source level.
 - **Display Name Deduplication** – Multiple terminals in the same directory are suffixed with `(1)`, `(2)`, etc.
@@ -60,6 +60,7 @@ A tab-based Electron launcher for managing multiple OpenCode terminal sessions, 
 - **Provider Grouping** – Models grouped by provider (OpenCode, GitHub Copilot, LiteLLM)
 - **Model Caching** – Models cached with a timestamp in `config.json` to avoid slow CLI reloads on every startup
 - **Manual Refresh** – Force-refresh models via the Actions menu or reload button
+- **OpenCode 2 Compatible** – OpenCode 2 no longer accepts `--model` on the full-screen TUI. The launcher keeps using the shared background service and applies the selected model by preselecting it on the session through the OpenCode server API, then opening that session in the TUI (`opencode --session <id>`). If the model is unavailable for a directory, the launcher falls back to the default model.
 
 ### Startup & Configuration
 - **Auto-Launch** – Mark directories to automatically start a terminal on launcher open

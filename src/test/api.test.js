@@ -62,8 +62,14 @@ describe('api IPC bridge', () => {
   it('api.createPty(tabId, cwd, args) calls window.api.createPty(tabId, cwd, args, true) with autoStart default', async () => {
     const result = await api.createPty(tabId, cwd, args)
     expect(window.api.createPty).toHaveBeenCalledOnce()
-    expect(window.api.createPty).toHaveBeenCalledWith(tabId, cwd, args, true)
+    expect(window.api.createPty).toHaveBeenCalledWith(tabId, cwd, args, true, '')
     expect(result).toEqual({ ok: true, pid: 12345 })
+  })
+
+  it('api.createPty(tabId, cwd, args, autoStart, model) forwards the model', async () => {
+    await api.createPty(tabId, cwd, args, true, 'opencode/big-pickle')
+    expect(window.api.createPty).toHaveBeenCalledOnce()
+    expect(window.api.createPty).toHaveBeenCalledWith(tabId, cwd, args, true, 'opencode/big-pickle')
   })
 
   it('api.killPty(tabId) calls window.api.killPty(tabId) with tabId', async () => {

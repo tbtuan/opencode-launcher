@@ -50,7 +50,7 @@ export const api = {
   getPathForFile: (file) => invokeIpc('getPathForFile', file),
   listModels: () => invokeIpc('listModels'),
   refreshModels: () => invokeIpc('refreshModels'),
-  createPty: (tabId, cwd, args, autoStart = true) => invokeIpc('createPty', tabId, cwd, args, autoStart),
+  createPty: (tabId, cwd, args, autoStart = true, model = '') => invokeIpc('createPty', tabId, cwd, args, autoStart, model),
   killPty: (tabId) => invokeIpc('killPty', tabId),
   writePty: (tabId, data) => sendIpc('writePty', tabId, data),
   resizePty: (tabId, cols, rows) => sendIpc('resizePty', tabId, cols, rows),

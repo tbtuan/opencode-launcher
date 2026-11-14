@@ -162,11 +162,8 @@ function AppInner() {
     const autoLaunch = state.savedDirectories.filter(d => d.startOnLaunch)
     async function run() {
       for (const dir of autoLaunch) {
-        const args = [
-          dir.model ? `--model ${dir.model}` : '',
-          dir.continueSession ? '--continue' : '',
-        ].filter(Boolean).join(' ')
-        await createTab(dir.name, dir.path, args, dir._id)
+        const args = dir.continueSession ? '--continue' : ''
+        await createTab(dir.name, dir.path, args, dir._id, -1, dir.model)
       }
       // Activate default tab
       const defaultDir = state.savedDirectories.find(d => d.path === state.defaultTab)
@@ -178,7 +175,7 @@ function AppInner() {
           setActiveTab(existingTab.id)
         } else {
           const args = defaultDir.continueSession ? '--continue' : ''
-          const id = await createTab(defaultDir.name, defaultDir.path, args, defaultDir._id)
+          const id = await createTab(defaultDir.name, defaultDir.path, args, defaultDir._id, -1, defaultDir.model)
           setActiveTab(id)
         }
       } else if (state.tabs.length > 0) {
@@ -208,7 +205,7 @@ function AppInner() {
   }, [state.isLoaded]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Tab creation
-  const createTab = useCallback(async (name, cwd, args = '', dirId = null, insertIdx = -1) => {
+  const createTab = useCallback(async (name, cwd, args = '', dirId = null, insertIdx = -1, model = '') => {
     const id = generateTabId()
     const tab = {
       id,
@@ -228,7 +225,7 @@ function AppInner() {
     }
 
     try {
-      const result = await createPtySession(id, cwd, args)
+      const result = await createPtySession(id, cwd, args, true, model)
       if (result?.ok) {
         updateTab(id, { status: 'running', isProcessing: () => true })
         recalcDisplayNames(cwd)
@@ -262,12 +259,9 @@ function AppInner() {
     const existing = state.tabs.find(t => t.dirId === dir._id)
     if (existing) { setActiveTab(existing.id); return }
     creatingDirsRef.current.add(dir._id)
-    const args = [
-      dir.model ? `--model ${dir.model}` : '',
-      dir.continueSession ? '--continue' : '',
-    ].filter(Boolean).join(' ')
+    const args = dir.continueSession ? '--continue' : ''
     try {
-      const id = await createTab(dir.name, dir.path, args, dir._id)
+      const id = await createTab(dir.name, dir.path, args, dir._id, -1, dir.model)
       logger.info('App', 'Open terminal for dir', { dirId: dir._id, name: dir.name, tabId: id })
       setActiveTab(id)
     } finally {
@@ -355,11 +349,8 @@ function AppInner() {
     const idx = state.tabs.indexOf(tab)
     const wasActive = tab.id === state.activeId
     await closeTab(tab.id)
-    const args = [
-      dir.model ? `--model ${dir.model}` : '',
-      dir.continueSession ? '--continue' : '',
-    ].filter(Boolean).join(' ')
-    const newId = await createTab(dir.name, dir.path, args, dir._id, idx)
+    const args = dir.continueSession ? '--continue' : ''
+    const newId = await createTab(dir.name, dir.path, args, dir._id, idx, dir.model)
     if (wasActive) {
       setActiveTab(newId)
     }
@@ -587,11 +578,8 @@ function AppInner() {
         setDefaultTab(folderPath)
         persist([...state.savedDirectories, newDir], folderPath, getLanguage())
       }
-      const args = [
-        model ? `--model ${model}` : '',
-        continueSession ? '--continue' : '',
-      ].filter(Boolean).join(' ')
-      const id = await createTab(name, folderPath, args, newId)
+      const args = continueSession ? '--continue' : ''
+      const id = await createTab(name, folderPath, args, newId, -1, model)
       setActiveTab(id)
     } else if (action === 'saveOnly') {
       const newId = generateId()
