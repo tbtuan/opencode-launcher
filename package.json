@@ -4,6 +4,7 @@
   "description": "Tab-based OpenCode launcher using Electron + React + Vite + xterm.js",
   "main": "main.js",
   "scripts": {
+    "prestart": "node check-build.js || npm run build",
     "start": "electron .",
     "dev": "vite",
     "build": "vite build",

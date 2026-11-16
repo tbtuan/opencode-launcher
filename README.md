@@ -76,6 +76,7 @@ A tab-based Electron launcher for managing multiple OpenCode terminal sessions, 
 - **Smart Build Check** – Timestamp-based Vite build check before launch (compares `dist/index.html` mtime against source files); skips rebuild when up-to-date
 - **Auto-Rebuild on Restart** – Restarting the launcher checks if a rebuild is needed and shows a spinner overlay during the build process
 - **Cross-Platform Start Scripts** – `start.bat` (Windows) and `start.sh` (Linux/macOS) both run the build check before launching
+- **npm start Never Serves a Stale Bundle** – a `prestart` hook runs the same timestamp check and rebuilds `dist/` when source files are newer, so pulling updates and running `npm start` shows the new UI
 
 ### Multi-Language
 - **German & English** – Full UI translations for both languages

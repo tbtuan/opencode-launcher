@@ -25,7 +25,6 @@ export function generateTabId() {
 export async function createPtySession(tabId, cwd, args, autoStart = true, model = '', preStartCommand = '') {
   return api.createPty(tabId, cwd, args, autoStart, model, preStartCommand)
 }
-}
 
 export function writeToPty(tabId, data) {
   api.writePty(tabId, data)

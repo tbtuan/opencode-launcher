@@ -62,7 +62,7 @@ describe('api IPC bridge', () => {
   it('api.createPty uses autoStart and empty setup defaults', async () => {
     const result = await api.createPty(tabId, cwd, args)
     expect(window.api.createPty).toHaveBeenCalledOnce()
-    expect(window.api.createPty).toHaveBeenCalledWith(tabId, cwd, args, true, '')
+    expect(window.api.createPty).toHaveBeenCalledWith(tabId, cwd, args, true, '', '')
     expect(result).toEqual({ ok: true, pid: 12345 })
   })
 
@@ -80,7 +80,6 @@ describe('api IPC bridge', () => {
   it('preserves disabled autoStart for split terminals', async () => {
     await api.createPty(tabId, cwd, '', false)
     expect(window.api.createPty).toHaveBeenCalledWith(tabId, cwd, '', false, '', '')
-  }
   })
 
   it('api.killPty(tabId) calls window.api.killPty(tabId) with tabId', async () => {
