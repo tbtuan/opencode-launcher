@@ -4,6 +4,7 @@ const fs = require('fs')
 const pty = require('node-pty')
 const { execSync, exec } = require('child_process')
 const { buildStartupCommand } = require('./startup-command')
+const { createOpencodeSessions } = require('./opencodeSessions')
 
 let mainWindow
 let devToolsWindow = null
@@ -34,36 +35,45 @@ function saveConfig(config) {
   fs.writeFileSync(configPath, JSON.stringify(config, null, 2), 'utf-8')
 }
 
-function loadModels(refresh = false) {
+// Parse `opencode models` output. OpenCode 2 prints one `provider/model` per
+// line and no longer supports `--verbose`/`--refresh`; the plain lines still
+// carry everything the launcher needs. Also tolerates the old V1 `--verbose`
+// output, where every id line is followed by a JSON metadata block.
+function loadModels() {
   try {
-    const cmd = refresh ? 'opencode models --refresh --verbose' : 'opencode models --verbose'
-    const output = execSync(cmd, { encoding: 'utf8', timeout: 15000 })
+    const output = execSync('opencode models', {
+      encoding: 'utf8',
+      timeout: 20000,
+      windowsHide: true,
+    })
+    const seen = new Set()
     const models = []
-    const lines = output.split('\n')
-    let i = 0
-    while (i < lines.length) {
-      const header = lines[i].trim()
-      if (/^[a-zA-Z]/.test(header) && header.includes('/')) {
-        let json = '', depth = 0, j = i + 1
-        while (j < lines.length) {
-          json += lines[j] + '\n'
-          depth += (lines[j].match(/{/g) || []).length
-          depth -= (lines[j].match(/}/g) || []).length
-          j++
-          if (depth === 0 && json.trim().startsWith('{')) break
-        }
-        try {
-          const obj = JSON.parse(json)
-          models.push({ id: header, name: obj.name, providerID: obj.providerID })
-        } catch {}
-        i = j
-      } else { i++ }
+    for (const raw of output.split(/\r?\n/)) {
+      const line = raw.replace(/\x1b\[[0-9;]*m/g, '').trim()
+      // ids never contain whitespace; this also skips help text and JSON
+      if (!line || /\s/.test(line)) continue
+      const slash = line.indexOf('/')
+      if (slash <= 0 || slash === line.length - 1) continue
+      if (seen.has(line)) continue
+      seen.add(line)
+      models.push({
+        id: line,
+        name: line.slice(slash + 1),
+        providerID: line.slice(0, slash),
+      })
     }
     return models
   } catch (e) {
     return []
   }
 }
+
+// OpenCode 2 removed `--model` from the full-screen TUI. `buildOpencodeLaunch`
+// pins the per-directory model through the server API and opens the TUI with
+// `opencode --session <id>`, which keeps the shared background service.
+const { parseModelRef, buildOpencodeLaunch, defaultOpencodeCommand } = createOpencodeSessions({
+  log: (level, ...args) => mainLog(level, ...args),
+})
 
 function createWindow() {
   mainWindow = new BrowserWindow({
@@ -181,8 +191,9 @@ function resolveShell() {
 }
 
 // ── IPC: Create PTY ──────────────────────────────────────────────────────────
-ipcMain.handle('pty:create', (_, { tabId, cwd, args, autoStart, preStartCommand }) => {
-  mainLog('info', 'pty:create', { tabId, cwd, autoStart })
+ipcMain.handle('pty:create', async (_, { tabId, cwd, args, autoStart, model, preStartCommand }) => {
+  mainLog('info', 'pty:create', { tabId, cwd, autoStart, model })
+
   // Kill existing if any
   if (ptyProcesses.has(tabId)) {
     mainLog('info', 'pty:create killing existing for', tabId)
@@ -226,13 +237,43 @@ ipcMain.handle('pty:create', (_, { tabId, cwd, args, autoStart, preStartCommand 
 
   // Auto-start opencode (skip for split terminals and when explicitly disabled)
   if (autoStart !== false) {
-    setTimeout(() => {
-      if (ptyProcesses.get(tabId) === ptyProc) {
-        const cmd = buildStartupCommand(shell, args, preStartCommand)
-        ptyProc.write(cmd)
-        // Signal renderer that opencode is starting
-        mainWindow?.webContents.send(`opencode:started:${tabId}`)
+    setTimeout(async () => {
+      if (!ptyProcesses.has(tabId)) return
+      let opencodeCmd = (typeof defaultOpencodeCommand === 'function') ? defaultOpencodeCommand(args) : (args ? `opencode ${args}` : 'opencode')
+      try {
+        if (typeof parseModelRef === 'function' && parseModelRef(model)) {
+          opencodeCmd = await buildOpencodeLaunch(cwd, args, model)
+        }
+      } catch (e) {
+        mainLog('warn', 'buildOpencodeLaunch failed', { tabId, error: e?.message })
+        opencodeCmd = (args ? `opencode ${args}` : 'opencode')
       }
+      const setup = typeof preStartCommand === 'string' ? preStartCommand.trim() : ''
+      let finalCmd = opencodeCmd
+      if (setup) {
+        const shellName = require('path').basename(shell).toLowerCase()
+        if (shellName === 'pwsh.exe' || shellName === 'powershell.exe') {
+          finalCmd = `${setup}; if ($?) { ${opencodeCmd} }`
+        } else {
+          finalCmd = `${setup} && ${opencodeCmd}`
+        }
+      }
+      if (!ptyProcesses.has(tabId)) return
+      mainLog('info', 'pty:create starting opencode', { tabId, command: finalCmd })
+      try { ptyProc.write(`${finalCmd}
+`) } catch (e) { mainLog('warn', 'pty:create write failed', { tabId, error: e?.message }) }
+      mainWindow?.webContents.send(`opencode:started:${tabId}`)
+    }, 500)
+      }
+      if (!ptyProcesses.has(tabId)) return
+      mainLog('info', 'pty:create starting opencode', { tabId, command })
+      try {
+        ptyProc.write(`${command}\r`)
+      } catch (e) {
+        mainLog('warn', 'pty:create write failed', { tabId, error: e?.message })
+      }
+      // Signal renderer that opencode is starting
+      mainWindow?.webContents.send(`opencode:started:${tabId}`)
     }, 500)
   }
 
@@ -281,7 +322,7 @@ ipcMain.handle('models:list', () => {
     return { models: config.modelsCache.models, timestamp: config.modelsCache.timestamp }
   }
   // Kein Cache → einmalig laden und speichern
-  const models = loadModels(false)
+  const models = loadModels()
   const timestamp = new Date().toISOString()
   config.modelsCache = { timestamp, models }
   saveConfig(config)
@@ -290,7 +331,7 @@ ipcMain.handle('models:list', () => {
 
 // ── IPC: Refresh Models ──────────────────────────────────────────────────────
 ipcMain.handle('models:refresh', () => {
-  const models = loadModels(true)
+  const models = loadModels()
   const timestamp = new Date().toISOString()
   const config = loadConfig()
   config.modelsCache = { timestamp, models }
@@ -424,8 +465,39 @@ ipcMain.handle('log:save', (_, { content }) => {
   }
 })
 
+// Returns true if the system clipboard currently holds image data (e.g. a
+// screenshot). Text copies normally have no image/* format, so this only fires
+// for actual image content.
+function clipboardHasImage() {
+  try {
+    if (clipboard.availableFormats().some((format) => format.startsWith('image/'))) return true
+    return !clipboard.readImage().isEmpty()
+  } catch (e) {
+    mainLog('warn', 'clipboard image detection failed', e?.message)
+    return false
+  }
+}
+
 // ── IPC: Fast Terminal Paste (Main reads clipboard, sends text to renderer) ──
 ipcMain.on('terminal-paste', (event, { tabId }) => {
+  // Image on the clipboard: hand Ctrl+V to the program in the PTY instead of
+  // pasting text. OpenCode reads the OS clipboard itself and turns the key into
+  // an image attachment ("[Image 1]"). The launcher only intercepts Ctrl+V to
+  // work around broken text paste on Windows, which would otherwise swallow
+  // image paste entirely. \x16 is exactly the byte a real terminal sends for
+  // Ctrl+V.
+  if (clipboardHasImage()) {
+    const ptyProc = ptyProcesses.get(tabId)
+    if (ptyProc) {
+      try {
+        ptyProc.write('\x16')
+        return
+      } catch (e) {
+        mainLog('warn', 'terminal-paste: image Ctrl+V forward failed for', tabId, e?.message)
+      }
+    }
+  }
+
   const text = clipboard.readText()
   if (text) {
     const win = BrowserWindow.fromWebContents(event.sender)

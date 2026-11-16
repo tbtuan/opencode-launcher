@@ -14,7 +14,7 @@ contextBridge.exposeInMainWorld('api', {
   refreshModels: () => ipcRenderer.invoke('models:refresh'),
 
   // PTY lifecycle
-  createPty: (tabId, cwd, args, autoStart, preStartCommand) => ipcRenderer.invoke('pty:create', { tabId, cwd, args, autoStart, preStartCommand }),
+  createPty: (tabId, cwd, args, autoStart, model, preStartCommand) => ipcRenderer.invoke('pty:create', { tabId, cwd, args, autoStart, model, preStartCommand }),
   killPty: (tabId) => ipcRenderer.invoke('pty:kill', { tabId }),
 
   // PTY I/O

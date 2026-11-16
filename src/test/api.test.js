@@ -68,13 +68,19 @@ describe('api IPC bridge', () => {
 
   it('forwards a configured setup command through the PTY service and API', async () => {
     const { createPtySession } = await import('../services/terminalService')
-    await createPtySession(tabId, cwd, '--continue', true, 'source ./setup.sh')
-    expect(window.api.createPty).toHaveBeenCalledWith(tabId, cwd, '--continue', true, 'source ./setup.sh')
+    await createPtySession(tabId, cwd, '--continue', true, '', 'source ./setup.sh')
+    expect(window.api.createPty).toHaveBeenCalledWith(tabId, cwd, '--continue', true, '', 'source ./setup.sh')
+  })
+
+  it('api.createPty forwards model', async () => {
+    await api.createPty(tabId, cwd, args, true, 'opencode/big-pickle')
+    expect(window.api.createPty).toHaveBeenCalledWith(tabId, cwd, args, true, 'opencode/big-pickle', '')
   })
 
   it('preserves disabled autoStart for split terminals', async () => {
     await api.createPty(tabId, cwd, '', false)
-    expect(window.api.createPty).toHaveBeenCalledWith(tabId, cwd, '', false, '')
+    expect(window.api.createPty).toHaveBeenCalledWith(tabId, cwd, '', false, '', '')
+  }
   })
 
   it('api.killPty(tabId) calls window.api.killPty(tabId) with tabId', async () => {
