@@ -260,19 +260,7 @@ ipcMain.handle('pty:create', async (_, { tabId, cwd, args, autoStart, model, pre
       }
       if (!ptyProcesses.has(tabId)) return
       mainLog('info', 'pty:create starting opencode', { tabId, command: finalCmd })
-      try { ptyProc.write(`${finalCmd}
-`) } catch (e) { mainLog('warn', 'pty:create write failed', { tabId, error: e?.message }) }
-      mainWindow?.webContents.send(`opencode:started:${tabId}`)
-    }, 500)
-      }
-      if (!ptyProcesses.has(tabId)) return
-      mainLog('info', 'pty:create starting opencode', { tabId, command })
-      try {
-        ptyProc.write(`${command}\r`)
-      } catch (e) {
-        mainLog('warn', 'pty:create write failed', { tabId, error: e?.message })
-      }
-      // Signal renderer that opencode is starting
+      try { ptyProc.write(`${finalCmd}\r`) } catch (e) { mainLog('warn', 'pty:create write failed', { tabId, error: e?.message }) }
       mainWindow?.webContents.send(`opencode:started:${tabId}`)
     }, 500)
   }
